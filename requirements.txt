@@ -1,0 +1,5 @@
+aiohttp
+telethon
+aiogram
+python-dotenv
+user-agents
