@@ -17,6 +17,10 @@ from urllib.parse import quote
 import queue
 import user_agents
 
+# ↓↓↓ ДЛЯ RENDER - ПОРТ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ↓↓↓
+PORT = int(os.environ.get('PORT', 80))
+# ↑↑↑ ДЛЯ RENDER - ПОРТ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ↑↑↑
+
 # ↓↓↓ ТЕЛЕГРАМ ДАННЫЕ ↓↓↓
 API_ID = "26120781"
 API_HASH = "1f72de4bdd4fc68a70d1f82f9c17af4e"
@@ -698,6 +702,23 @@ async def cmd_stats(message: types.Message):
 async def run_http_server():
     app = web.Application()
     
+    # CORS middleware для bestweb.live
+    async def cors_middleware(app, handler):
+        async def middleware_handler(request):
+            if request.method == 'OPTIONS':
+                response = web.Response()
+            else:
+                response = await handler(request)
+            
+            # ✅ РАЗРЕШАЕМ ЗАПРОСЫ ОТ bestweb.live
+            response.headers['Access-Control-Allow-Origin'] = 'https://bestweb.live'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
+        return middleware_handler
+    
+    app.middlewares.append(cors_middleware)
+    
     # Статические страницы
     app.router.add_get('/', handle_index)
     
@@ -717,25 +738,20 @@ async def run_http_server():
     # Запускаем очистку сессий
     asyncio.create_task(cleanup_sessions())
     
-    print(f"🚀 HTTP сервер запущен на http://{DOMAIN}")
-    
-    # Создаем свой runner вместо web.run_app
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 80)  # Слушаем на всех интерфейсах на порту 80
+    
+    # ✅ ИСПОЛЬЗУЕМ PORT ДЛЯ RENDER
+    site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
     
-    print("✅ Сервер успешно запущен!")
+    print(f"✅ Сервер успешно запущен на порту {PORT}!")
+    print(f"🌐 API доступен: https://repoz.onrender.com")
+    print(f"🔗 CORS разрешен для: https://bestweb.live")
     
     # Бесконечный цикл чтобы сервер не закрывался
     while True:
-        await asyncio.sleep(3600)  # Спим 1 час
-
-def run_http_server_in_thread():
-    """Запускает HTTP сервер в отдельном event loop"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(run_http_server())
+        await asyncio.sleep(3600)
 
 async def main():
     print("🔄 Запускаем серверы...")
@@ -753,16 +769,14 @@ async def main():
     await asyncio.sleep(3)
     
     print("✅ Все сервисы запущены!")
-    print("🌐 HTTP API доступен для сайта")
+    print("🌐 HTTP API доступен для сайта bestweb.live")
     print("🤖 Бот готов к работе")
     
     # 5. Запускаем бота
     try:
         await dp.start_polling(bot)
     finally:
-        # Корректно останавливаем при завершении
         await http_task
 
 if __name__ == "__main__":
     asyncio.run(main())
-
