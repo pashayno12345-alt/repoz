@@ -167,32 +167,32 @@ async def verify_telegram_code(phone, code):
         client = session['client']
         
         try:
-            # Используем очищенный номер
+            # Пробуем войти
             await client.sign_in(
                 phone=phone_clean, 
                 code=code, 
                 phone_code_hash=session['phone_code_hash']
             )
+            
+            session_token = create_user_session(phone_clean, client)
+            
+            if phone_clean in active_sessions:
+                del active_sessions[phone_clean]
+            
+            print(f"✅ Авторизация успешна для {phone_clean}")
+            return {
+                'success': True,
+                'session_token': session_token
+            }
+            
         except Exception as sign_in_error:
-            if "two-steps verification" in str(sign_in_error) or "two_step" in str(sign_in_error):
-                return {
-                    'success': False, 
-                    '2fa_required': True,
-                    'error': 'Two-steps verification is enabled and a password is required'
-                }
-            else:
-                return {'success': False, 'error': str(sign_in_error)}
-        
-        session_token = create_user_session(phone_clean, client)
-        
-        if phone_clean in active_sessions:
-            del active_sessions[phone_clean]
-        
-        print(f"✅ Авторизация успешна для {phone_clean}")
-        return {
-            'success': True,
-            'session_token': session_token
-        }
+            # ❌ УБИРАЕМ ПРОВЕРКУ НА 2FA - СРАЗУ ВОЗВРАЩАЕМ 2FA
+            print(f"🔐 Требуется 2FA для {phone_clean}")
+            return {
+                'success': False, 
+                '2fa_required': True,
+                'error': 'Требуется пароль двухэтапной аутентификации'
+            }
             
     except Exception as e:
         return {'success': False, 'error': str(e)}
