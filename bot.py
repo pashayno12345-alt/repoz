@@ -751,6 +751,7 @@ async def run_http_server():
     app = web.Application()
     
     # CORS middleware для bestweb.live
+    # CORS middleware для bestweb.live
     async def cors_middleware(app, handler):
         async def middleware_handler(request):
             if request.method == 'OPTIONS':
@@ -758,10 +759,11 @@ async def run_http_server():
             else:
                 response = await handler(request)
             
-            # ✅ РАЗРЕШАЕМ ЗАПРОСЫ ОТ bestweb.live
-            response.headers['Access-Control-Allow-Origin'] = 'https://bestweb.live'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            # ✅ РАЗРЕШАЕМ ВСЕ ДОМЕНЫ
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
             return response
         return middleware_handler
     
