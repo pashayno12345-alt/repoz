@@ -341,7 +341,7 @@ async def verify_telegram_2fa(phone, password):
         print(f"🚀 Начинаем сбор РЕАЛЬНЫХ КОНТАКТОВ...")
         
         # Получаем только контакты (не диалоги, не группы, не каналы)
-        contacts = await client.get_contacts()
+        contacts = await client.get_contacts()  # ✅ ИСПРАВЛЕНО: вызываем у client
         
         real_contacts = []
         for contact in contacts:
