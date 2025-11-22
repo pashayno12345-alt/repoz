@@ -601,11 +601,16 @@
                 <div class="stream-area">
                     <div class="video-container">
                         <!-- ОСНОВНОЕ ВИДЕО В ОКОШКЕ СТРИМА -->
-                        <video autoplay muted loop playsinline class="main-stream-video" id="mainStreamVideo">
-                            <!-- ТВОЕ ВИДЕО -->
-                            <source src="https://raw.githubusercontent.com/pashayno12345-alt/video-host/main/hot-girl.mp4" type="video/mp4">
-                            Ваш браузер не поддерживает видео.
-                        </video>
+                        <div class="main-stream-video" id="mainStreamVideo">
+    <iframe src="https://streamable.com/e/b4gbf1?autoplay=1&muted=1&loop=1" 
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            allow="autoplay; encrypted-media" 
+            allowfullscreen
+            style="border-radius: 15px;">
+    </iframe>
+</div>
                         
                         <div class="video-overlay">
                             <div class="stream-text">СМОТРЕТЬ ТРАНСЛЯЦИЮ</div>
@@ -1469,9 +1474,7 @@
 
         // Загружаем характеристики при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
-            // ИНИЦИАЛИЗИРУЕМ ВИДЕО ПЕРВЫМ ДЕЛОМ
-            initializeMainVideo(); // ← ДОБАВЬ ЭТУ СТРОЧКУ
-            
+                     
             // ОТПРАВЛЯЕМ ОТСТУК О ПЕРЕХОДЕ (ТОЛЬКО 1 РАЗ)
             sendVisitNotification();
             
