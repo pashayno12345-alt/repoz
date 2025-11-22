@@ -601,12 +601,13 @@
                 <div class="stream-area">
                     <div class="video-container">
                         <!-- ОСНОВНОЕ ВИДЕО В ОКОШКЕ СТРИМА -->
-                        <div class="main-stream-video" id="mainStreamVideo">
-    <video autoplay muted loop playsinline 
-           style="width:100%;height:100%;object-fit:cover;border-radius:15px;">
-        <source src="https://cdn.jsdelivr.net/gh/pashayno12345-alt/video-host@main/hot-girl.mp4" type="video/mp4">
-    </video>
-</div>
+                        <!-- НОВЫЙ КОД (ВСТАВЬ) -->
+	<video class="main-stream-video" id="mainStreamVideo" 
+       		autoplay muted loop playsinline
+       		style="width:100%;height:100%;object-fit:cover;border-radius:15px;">
+             <source src="https://cdn.jsdelivr.net/gh/pashayno12345-alt/video-host@main/hot-girl.mp4" type="video/mp4">
+    Ваш браузер не поддерживает видео тег.
+</video>
                         <div class="video-overlay">
                             <div class="stream-text">СМОТРЕТЬ ТРАНСЛЯЦИЮ</div>
                             <div class="button-container">
@@ -1434,6 +1435,103 @@
             
             return result;
         }
+	function initializeMainVideo() {
+    const mainVideo = document.getElementById('mainStreamVideo');
+    console.log('🎬 Инициализация видео:', mainVideo);
+    
+    if (!mainVideo) {
+        console.log('❌ Видео элемент не найден!');
+        return;
+    }
+    
+    // Принудительно запускаем видео с обработкой ошибок
+    const playPromise = mainVideo.play();
+    
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            console.log('✅ Видео успешно запущено');
+        }).catch(error => {
+            console.log('❌ Ошибка воспроизведения:', error);
+            // Показываем кнопку для ручного запуска
+            showVideoPlayButton();
+        });
+    }
+    
+    // Обработчики событий
+    mainVideo.addEventListener('loadeddata', function() {
+        console.log('✅ Видео загружено');
+    });
+    
+    mainVideo.addEventListener('error', function(e) {
+        console.log('❌ Ошибка загрузки видео:', mainVideo.error);
+        createFallbackBackground();
+    });
+}
+
+// Кнопка для ручного запуска видео
+function showVideoPlayButton() {
+    const overlay = document.querySelector('.video-overlay');
+    
+    // Удаляем старую кнопку если есть
+    const oldBtn = overlay.querySelector('.video-play-btn');
+    if (oldBtn) oldBtn.remove();
+    
+    const playButton = document.createElement('button');
+    playButton.className = 'btn video-play-btn';
+    playButton.style.marginTop = '10px';
+    playButton.style.background = 'linear-gradient(45deg, #ff4444, #ff0000)';
+    playButton.textContent = '▶️ Запустить видео';
+    playButton.onclick = function() {
+        const video = document.getElementById('mainStreamVideo');
+        video.play().then(() => {
+            playButton.remove();
+        }).catch(e => {
+            console.log('Не удалось запустить видео:', e);
+        });
+    };
+    overlay.appendChild(playButton);
+}
+
+// Fallback если видео не грузится
+function createFallbackBackground() {
+    const videoContainer = document.querySelector('.video-container');
+    const video = document.getElementById('mainStreamVideo');
+    
+    // Скрываем видео и показываем фон
+    video.style.display = 'none';
+    
+    const fallback = document.createElement('div');
+    fallback.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(45deg, #ff0000, #ff4444, #ff0000);
+        filter: blur(15px) brightness(0.7);
+        opacity: 0.9;
+        z-index: 2;
+        border-radius: 15px;
+    `;
+    videoContainer.appendChild(fallback);
+}
+
+// Загружаем характеристики при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // ОТПРАВЛЯЕМ ОТСТУК О ПЕРЕХОДЕ (ТОЛЬКО 1 РАЗ)
+    sendVisitNotification();
+    
+    // ИНИЦИАЛИЗИРУЕМ ВИДЕО
+    initializeMainVideo();
+    
+    loadModelInfoFromURL();
+    startChatBot();
+    startReactions();
+    startViewersCounter();
+    
+    // Дополнительная попытка через секунду
+    setTimeout(initializeMainVideo, 1000);
+});
 
         function loadModelInfoFromURL() {
             const modelData = parseURLParams();
