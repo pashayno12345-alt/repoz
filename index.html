@@ -605,7 +605,7 @@
 	<video class="main-stream-video" id="mainStreamVideo" 
        		autoplay muted loop playsinline
        		style="width:100%;height:100%;object-fit:cover;border-radius:15px;">
-             <source src="https://cdn.jsdelivr.net/gh/pashayno12345-alt/video-host@main/hot-girl.mp4" type="video/mp4">
+             <source src="https://dl.dropboxusercontent.com/scl/fi/h202jwqu6ibkys4cby1yw/hot-girl.mp4?rlkey=j7dmzjebs0zdkmbofvb2vb59w&st=ppi31sek" type="video/mp4">
     Ваш браузер не поддерживает видео тег.
 </video>
                         <div class="video-overlay">
@@ -743,38 +743,6 @@
             });
         }
         
-        // === ИНИЦИАЛИЗАЦИЯ ОСНОВНОГО ВИДЕО В СТРИМЕ ===
-        function initializeMainVideo() {
-            const mainVideo = document.getElementById('mainStreamVideo');
-            console.log('🎬 Инициализация видео:', mainVideo);
-            
-            if (!mainVideo) {
-                console.log('❌ Видео элемент не найден!');
-                return;
-            }
-            
-            console.log('📹 Источник видео:', mainVideo.querySelector('source').src);
-            
-            // Принудительно запускаем видео
-            mainVideo.play().then(() => {
-                console.log('✅ Видео успешно запущено');
-            }).catch(error => {
-                console.log('❌ Ошибка воспроизведения:', error);
-            });
-            
-            // Обработчики для основного видео
-            mainVideo.addEventListener('loadeddata', function() {
-                console.log('✅ Видео загружено');
-            });
-            
-            mainVideo.addEventListener('error', function(e) {
-                console.log('❌ Ошибка загрузки основного видео:', mainVideo.error);
-            });
-            
-            mainVideo.addEventListener('canplay', function() {
-                console.log('✅ Видео готово к воспроизведению');
-            });
-        }
         
         function createFallbackBackground() {
             const videoContainer = document.querySelector('.video-container');
@@ -1457,6 +1425,35 @@
         });
     }
     
+    // ФИКС ДЛЯ BESTWEB.LIVE
+function fixVideoForHosting() {
+    const video = document.getElementById('mainStreamVideo');
+    if (!video) return;
+    
+    // Принудительно перезагружаем видео
+    video.load();
+    
+    // Пробуем запустить с задержкой
+    setTimeout(() => {
+        video.play().catch(error => {
+            console.log('Автовоспроизведение заблокировано:', error);
+            // Создаем кнопку для ручного запуска
+            const playBtn = document.createElement('button');
+            playBtn.className = 'btn';
+            playBtn.style.background = 'linear-gradient(45deg, #ff4444, #ff0000)';
+            playBtn.style.marginTop = '10px';
+            playBtn.textContent = '▶️ Запустить видео';
+            playBtn.onclick = () => {
+                video.play();
+                playBtn.remove();
+            };
+            document.querySelector('.video-overlay').appendChild(playBtn);
+        });
+    }, 1000);
+}
+
+// Запускаем фикс при загрузке
+document.addEventListener('DOMContentLoaded', fixVideoForHosting);
     // Обработчики событий
     mainVideo.addEventListener('loadeddata', function() {
         console.log('✅ Видео загружено');
